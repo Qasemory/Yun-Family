@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { get, post } from "../lib/api.js";
+import { get, post, API_BASE } from "../lib/api.js";
 import { useAuth } from "../lib/auth.jsx";
 import { Card, Msg, Spinner, MemberTabs, Stat } from "../components/ui.jsx";
 
@@ -36,7 +36,7 @@ export default function Health() {
   const saveGoal = async (e) => { e.preventDefault(); await post("/health/goal", { userId: u, ...goal }); setMsg({ kind: "ok", text: "حُفظ الهدف" }); load(); };
   const daily = async (metric, value) => { await post("/health/daily", { userId: u, metric, value }); load(); };
   const link = async () => { await post("/health/scale-link", { userId: u }); load(); };
-  const base = window.location.origin;
+  const base = API_BASE || window.location.origin;
   return (
     <div className="flex flex-col gap-4">
       {isParent && <MemberTabs members={members} value={u} onChange={(id) => setSp({ u: id })} />}
