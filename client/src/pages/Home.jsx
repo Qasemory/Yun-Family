@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { get, post } from "../lib/api.js";
 import { useAuth } from "../lib/auth.jsx";
+import { fam } from "../lib/paths.js";
 import { Card, Stat, Msg, Spinner } from "../components/ui.jsx";
 import TaskList from "../components/TaskList.jsx";
 
@@ -38,7 +39,7 @@ function ParentHome() {
               <>
                 <div className="grid grid-cols-3 gap-2 mb-3"><Stat label="الرصيد" value={p.balance} /><Stat label="فجر متتالي" value={p.streaks.prayer} /><Stat label="الترفيه" value={p.fun.unlocked ? "مفتوح" : "مقفل"} sub={`${p.fun.minutes} د`} /></div>
                 <div className="text-xs text-muted">{p.plan.filter((t) => t.status === "done").length} من {p.plan.length} مهام{p.fun.pending.length ? ` · باقي: ${p.fun.pending.join("، ")}` : ""}</div>
-                <div className="flex gap-2 mt-3"><Link to={`/health?u=${k.id}`} className="btn-ghost btn-sm">الصحة</Link><Link to={`/study?u=${k.id}`} className="btn-ghost btn-sm">الدراسة</Link><Link to={`/prayer?u=${k.id}`} className="btn-ghost btn-sm">الصلاة</Link></div>
+                <div className="flex gap-2 mt-3"><Link to={fam(`/health?u=${k.id}`)} className="btn-ghost btn-sm">الصحة</Link><Link to={fam(`/study?u=${k.id}`)} className="btn-ghost btn-sm">الدراسة</Link><Link to={`/prayer?u=${k.id}`} className="btn-ghost btn-sm">الصلاة</Link></div>
               </>
             )}
           </Card>

@@ -8,18 +8,27 @@ const r = Router();
 const PIN_MAX = 3, PASS_MAX = 5, LOCK_MIN = 15;
 const publicUser = (u) => ({ id: u._id, displayName: u.displayName, role: u.role, grade: u.grade, color: u.color, uiLanguage: u.uiLanguage, family: u.family, sex: u.sex, birthDate: u.birthDate });
 
-// قائمة الأفراد لشاشة الدخول (بدون بيانات حساسة)
-r.get("/members", async (req, res) => {
-  const users = await User.find({ isActive: true, role: { $in: ["owner", "admin", "child", "teen_adult"] } }).sort({ createdAt: 1 }).lean();
-  res.json(users.map((u) => ({ id: u._id, displayName: u.displayName, role: u.role, color: u.color, usesPin: isChild(u.role) })));
-});
+// توحيد الاسم للمقارنة: بدون مسافات، حروف صغيرة، وتوحيد الهمزات والتاء المربوطة والألف المقصورة
+const normName = (s) => String(s || "").trim().toLowerCase().replace(/[\sـ]+/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي");
 
+// الدخول بالاسم المكتوب (لا توجد قائمة أسماء عامة حتى لا تظهر أسماء العيلة لأي زائر)
 r.post("/login", async (req, res) => {
-  const { userId, password, pin } = req.body || {};
-  const user = await User.findById(userId);
-  if (!user || !user.isActive) return res.status(400).json({ error: "bad_login" });
+  const { name, secret: s, password, pin } = req.body || {};
+  const target = normName(name);
+  const raw = s ?? password ?? pin;
+  if (!target || !raw) return res.status(400).json({ error: "bad_login" });
+  const candidates = (await User.find({ isActive: true, role: { $in: ["owner", "admin", "child", "teen_adult"] } })).filter((u) => normName(u.displayName) === target);
+  if (!candidates.length) return res.status(400).json({ error: "bad_login" });
+  // لو تشابه اسمان نختار من تطابق كلمة سره، وإلا الأول
+  let user = candidates[0];
+  if (candidates.length > 1) {
+    for (const c of candidates) {
+      const h = isChild(c.role) ? c.pinHash : c.passwordHash;
+      if (h && (await bcrypt.compare(String(raw), h))) { user = c; break; }
+    }
+  }
   if (user.lockedUntil && user.lockedUntil > new Date()) return res.status(423).json({ error: "locked", until: user.lockedUntil });
-  const secret = isChild(user.role) ? pin : password;
+  const secret = raw;
   const hash = isChild(user.role) ? user.pinHash : user.passwordHash;
   const ok = secret && hash && (await bcrypt.compare(String(secret), hash));
   if (!ok) {

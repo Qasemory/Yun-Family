@@ -10,8 +10,8 @@ export function AuthProvider({ children }) {
     catch { setToken(null); setState({ loading: false, user: null, members: [], unread: 0 }); }
   }, []);
   useEffect(() => { refresh(); }, [refresh]);
-  const login = async (userId, secret, usesPin) => {
-    const r = await api("/auth/login", { method: "POST", body: usesPin ? { userId, pin: secret } : { userId, password: secret }, auth: false });
+  const login = async (name, secret) => {
+    const r = await api("/auth/login", { method: "POST", body: { name, secret }, auth: false });
     setToken(r.token); await refresh(); return r.user;
   };
   const logout = () => { setToken(null); setState({ loading: false, user: null, members: [], unread: 0 }); };

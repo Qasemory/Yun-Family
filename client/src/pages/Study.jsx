@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { fam } from "../lib/paths.js";
 import { get, post } from "../lib/api.js";
 import { useAuth } from "../lib/auth.jsx";
 import { Card, Empty, Spinner, Stat, MemberTabs } from "../components/ui.jsx";
@@ -26,7 +27,7 @@ export default function Study() {
       <div className="section">{en ? "Lessons" : "الدروس"}</div>
       {d.lessons.length === 0 && <Empty text={en ? "No lessons yet. A parent adds a page and the lesson is prepared for tomorrow." : "لا دروس بعد. الأهل يضيفون صفحة ويُحضَّر الدرس للغد."} />}
       {d.lessons.map((l) => (
-        <Link key={l._id} to={`/lesson/${l._id}`} className="card flex items-center justify-between">
+        <Link key={l._id} to={fam(`/lesson/${l._id}`)} className="card flex items-center justify-between">
           <div><div className="font-semibold font-en" dir="ltr">{l.title}</div><div className="text-xs text-muted">{en ? "for" : "ليوم"} {l.forDay} · {l.points?.length} {en ? "points" : "نقاط"}</div></div>
           <span className={`pill ${l.stage === "done" ? (l.mastered ? "pill-green" : "pill-gold") : ""}`}>{l.stage === "done" ? `${l.score}%` : l.stage}</span>
         </Link>

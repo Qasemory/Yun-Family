@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { fam } from "../lib/paths.js";
 import { get, post } from "../lib/api.js";
 import { useAuth } from "../lib/auth.jsx";
 import { Card, Msg, Spinner } from "../components/ui.jsx";
@@ -22,7 +23,7 @@ export default function Lesson() {
   const start = async () => { await post(`/study/lesson/${id}/start`); load(); };
   const sendPoint = async (e) => { e.preventDefault(); const r = await post(`/study/lesson/${id}/point`, { answer }); setFb(r); setAnswer(""); load(); };
   const sendExam = async (e) => { e.preventDefault(); const r = await post(`/study/lesson/${id}/exam`, { answers }); setFb(r); load(); };
-  const finish = async () => { await post(`/study/lesson/${id}/finish`); nav("/study"); };
+  const finish = async () => { await post(`/study/lesson/${id}/finish`); nav(fam("/study")); };
   return (
     <div className="flex flex-col gap-4">
       <div className="card">

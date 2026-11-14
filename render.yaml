@@ -17,7 +17,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CLIENT_ORIGIN
-        value: https://yun-family.onrender.com
+        value: https://yuncrochet-jo.onrender.com
   - type: web
     name: yun-family
     runtime: static

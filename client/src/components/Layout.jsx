@@ -1,6 +1,8 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../lib/auth.jsx";
 import { t, dirFor } from "../lib/i18n.js";
+import { fam } from "../lib/paths.js";
+import { useEffect } from "react";
 
 const Icon = ({ d }) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>;
 const ICONS = {
@@ -12,9 +14,10 @@ const ICONS = {
 
 export default function Layout() {
   const { user, lang, isParent, unread, logout } = useAuth();
+  useEffect(() => { document.title = "عيلتنا"; }, []);
   const nav = isParent
-    ? [["/", "home"], ["/prayer", "prayer"], ["/health", "health"], ["/family", "family"], ...(user.role === "admin" ? [["/shop", "shop"]] : []), ["/settings", "settings"]]
-    : [["/", "home"], ["/tasks", "tasks"], ["/study", "study"], ["/prayer", "prayer"], ["/health", "health"], ["/family", "family"]];
+    ? [[fam(), "home"], [fam("/prayer"), "prayer"], [fam("/health"), "health"], [fam("/feed"), "family"], ...(user.role === "admin" ? [[fam("/shop"), "shop"]] : []), [fam("/settings"), "settings"]]
+    : [[fam(), "home"], [fam("/tasks"), "tasks"], [fam("/study"), "study"], [fam("/prayer"), "prayer"], [fam("/health"), "health"], [fam("/feed"), "family"]];
   return (
     <div dir={dirFor(lang)} className="min-h-screen max-w-md mx-auto bg-ivory relative">
       <header className="flex items-center justify-between px-5 pt-5 pb-2">
@@ -23,7 +26,7 @@ export default function Layout() {
           <div><div className="font-semibold">{user.displayName}</div><div className="text-xs text-muted">{new Date().toLocaleDateString(lang === "ar" ? "ar-JO" : "en-GB", { weekday: "long", day: "numeric", month: "long" })}</div></div>
         </div>
         <div className="flex items-center gap-2">
-          {unread > 0 && <NavLink to="/settings" className="pill pill-gold">{unread}</NavLink>}
+          {unread > 0 && <NavLink to={fam("/settings")} className="pill pill-gold">{unread}</NavLink>}
           <button onClick={logout} className="text-xs text-muted">{t(lang, "logout")}</button>
         </div>
       </header>
@@ -33,7 +36,7 @@ export default function Layout() {
       <nav className="fixed bottom-0 inset-x-0 max-w-md mx-auto bg-white/95 backdrop-blur border-t border-line">
         <div className="flex justify-around py-2">
           {nav.map(([to, key]) => (
-            <NavLink key={to} to={to} end={to === "/"} className={({ isActive }) => `flex flex-col items-center gap-1 px-2 py-1 text-[11px] ${isActive ? "text-olive font-semibold" : "text-muted"}`}>
+            <NavLink key={to} to={to} end={to === fam()} className={({ isActive }) => `flex flex-col items-center gap-1 px-2 py-1 text-[11px] ${isActive ? "text-olive font-semibold" : "text-muted"}`}>
               <Icon d={ICONS[key]} /><span>{t(lang, key)}</span>
             </NavLink>
           ))}

@@ -27,7 +27,7 @@ export default function Store() {
     <div dir={ar ? "rtl" : "ltr"} className="min-h-screen bg-shop-cream text-shop-ink font-sans">
       <div className="max-w-md mx-auto px-5 pb-28">
         <header className="flex items-center justify-between pt-6">
-          <Link to={`/store?lang=${lang}`} className="flex items-center gap-3">
+          <Link to={`/?lang=${lang}`} className="flex items-center gap-3">
             <YarnIcon size={40} />
             <div><div className="font-shop font-bold text-xl leading-tight text-shop-brown">{ar ? b.name : b.nameEn} <span className="font-medium text-sm opacity-80">{ar ? b.descriptor : b.descriptorEn}</span></div><div className="text-[11px] text-[#9A8273]">{ar ? "صوف بالتركية · كروشيه يدوي من عمّان" : "Turkish for “wool” · handmade crochet in Amman"}</div></div>
           </Link>
@@ -53,7 +53,7 @@ export default function Store() {
             <div className="flex gap-4 mt-4 text-sm text-[#9A8273] overflow-x-auto">{cats.map(([k, l]) => <button key={k} onClick={() => setCat(k)} className={`pb-1 whitespace-nowrap ${cat === k ? "text-shop-ink font-semibold border-b-2 border-shop-brown" : ""}`}>{l}</button>)}</div>
             <div className="grid grid-cols-2 gap-3 mt-4">
               {list.map((p) => (
-                <Link key={p._id} to={`/store/${p.slug}?lang=${lang}`} className="bg-white rounded-2xl p-2 border border-shop-line">
+                <Link key={p._id} to={`/p/${p.slug}?lang=${lang}`} className="bg-white rounded-2xl p-2 border border-shop-line">
                   <div className="h-28 rounded-xl bg-shop-sand overflow-hidden">{p.imageUrl && <img src={p.imageUrl} alt="" className="w-full h-full object-cover" />}</div>
                   <div className="mt-2 font-semibold text-sm">{ar ? p.nameAr : p.nameEn || p.nameAr}</div>
                   <div className="text-[11px] text-[#9A8273]">{ar ? `حسب الطلب · ${p.days} أيام` : `Made to order · ${p.days} days`}</div>
@@ -84,7 +84,7 @@ export default function Store() {
                 <div className="text-[11px] text-[#9A8273] text-center">{ar ? "عربون ٣٥٪ عبر CliQ · تسليم بمكان عام أو توصيل" : "35% CliQ deposit · public-place handover or delivery"}<br />{ar ? b.craft : b.craftEn}</div>
               </form>
             )}
-            <Link to={`/store?lang=${lang}`} className="block text-center text-xs text-[#9A8273] mt-6">{ar ? "← كل المنتجات" : "All products"}</Link>
+            <Link to={`/?lang=${lang}`} className="block text-center text-xs text-[#9A8273] mt-6">{ar ? "← كل المنتجات" : "All products"}</Link>
           </div>
         )}
         {wa && !product && <a href={wa} className="fixed bottom-5 inset-x-5 max-w-md mx-auto rounded-2xl bg-shop-night text-shop-cream text-center py-4 font-semibold">{ar ? "اطلب على واتساب" : "Order on WhatsApp"}</a>}
