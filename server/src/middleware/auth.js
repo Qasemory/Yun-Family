@@ -7,7 +7,7 @@ export const isParent = (role) => PARENT_ROLES.has(role);
 export const isChild = (role) => CHILD_ROLES.has(role);
 
 export function signToken(user) {
-  return jwt.sign({ uid: String(user._id), role: user.role, fam: String(user.family) }, process.env.JWT_SECRET, { expiresIn: "30d" });
+  return jwt.sign({ uid: String(user._id), role: user.role, fam: String(user.family), tv: user.tokenVersion || 0 }, process.env.JWT_SECRET, { expiresIn: "30d" });
 }
 
 export async function requireAuth(req, res, next) {
@@ -18,6 +18,8 @@ export async function requireAuth(req, res, next) {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(payload.uid).lean();
     if (!user || !user.isActive) return res.status(401).json({ error: "unauthorized" });
+    // جلسة قديمة من قبل تغيير كلمة السر
+    if ((payload.tv || 0) !== (user.tokenVersion || 0)) return res.status(401).json({ error: "session_expired" });
     req.user = user;
     next();
   } catch {

@@ -1,11 +1,195 @@
-const S = {
-  ar: { home: "الرئيسية", tasks: "مهامي", prayer: "صلاتي", study: "دراستي", health: "صحتي", family: "عيلتنا", shop: "متجري", settings: "الإعدادات", logout: "خروج",
-    today: "اليوم", points: "نقاط", balance: "الرصيد", fun: "الترفيه", unlocked: "مفتوح", locked: "مقفل بعد", done: "تم", pending: "بانتظار التأكيد", mark: "خلصت", confirm: "تأكيد",
-    whoAreYou: "مين إنت؟", password: "كلمة السر", pin: "رمز الدخول", enter: "دخول", wrong: "بيانات غير صحيحة", locked15: "مقفل ١٥ دقيقة بعد ٣ محاولات", familyToday: "العائلة اليوم" },
-  en: { home: "Home", tasks: "My tasks", prayer: "My prayer", study: "My study", health: "My health", family: "Our family", shop: "My shop", settings: "Settings", logout: "Log out",
-    today: "Today", points: "points", balance: "Balance", fun: "Fun time", unlocked: "unlocked", locked: "locked until", done: "Done", pending: "Waiting for confirmation", mark: "Done!", confirm: "Confirm",
-    whoAreYou: "Who are you?", password: "Password", pin: "PIN", enter: "Enter", wrong: "Wrong details", locked15: "Locked 15 minutes after 3 tries", familyToday: "Family today" },
+// لغة الواجهة: عربي (RTL) أو إنجليزي (LTR).
+// «mixed» للأولاد = واجهة عربية كاملة، ومحتوى الدراسة إنجليزي داخل صناديق LTR (.reading-en / dir="ltr").
+import { useEffect } from "react";
+import { useAuth } from "./auth.jsx";
+
+const ar = {
+  appName: "عيلتنا", mainNav: "القائمة الرئيسية", logout: "خروج", notifications: "الإشعارات",
+  "nav.home": "الرئيسية", "nav.tasks": "مهامي", "nav.prayer": "صلاتي", "nav.study": "دراستي", "nav.health": "صحتي", "nav.family": "عيلتنا", "nav.shop": "متجري", "nav.settings": "الإعدادات",
+
+  "common.save": "حفظ", "common.add": "أضف", "common.edit": "عدّل", "common.confirm": "تأكيد", "common.saved": "تسجّل", "common.notSaved": "ما انحفظ، جرّب مرة تانية",
+  "common.waiting": "بانتظار", "common.today": "اليوم", "common.balance": "الرصيد", "common.fun": "الترفيه", "common.unlocked": "مفتوح", "common.locked": "مقفل",
+  "common.minutesShort": "{n} د", "common.nothingYet": "لا شيء بعد",
+
+  "domain.study": "دراسة", "domain.prayer": "صلاة", "domain.quran": "قرآن", "domain.dhikr": "أذكار", "domain.sport": "رياضة", "domain.language": "لغات", "domain.hobby": "هواية", "domain.health": "صحة", "domain.home": "بيت", "domain.fun": "ترفيه",
+
+  "tasks.proofPrompt": "الصق رابط صورة أو تسجيل كدليل", "tasks.sentToParents": "انبعتت للأهل للتأكيد.", "tasks.gotPoints": "+{n} نقاط", "tasks.needsProof": "هاي المهمة بدها صورة.",
+  "tasks.mandatory": "إلزامي", "tasks.markDone": "خلصت", "tasks.pointsLog": "سجل النقاط",
+
+  "home.greetOwner": "صباح الخير يا {name}", "home.greetAdmin": "أهلاً {name}", "home.familyToday": "العائلة اليوم", "home.waitingYou": "بانتظار تأكيدك", "home.fajrStreak": "فجر متتالي",
+  "home.tasksOf": "{done} من {total} مهام", "home.left": "باقي:", "home.hi": "أهلاً {name}", "home.todayBalance": "اليوم +{today} · الرصيد {balance}", "home.funTime": "وقت الترفيه",
+  "home.funUnlocked": "مفتوح · {n} دقيقة", "home.mustDoOf": "{done} من {total} إلزامي", "home.todayPlan": "خطة اليوم",
+
+  "feed.placeholder": "شارك لحظة اليوم…", "feed.post": "نشر", "feed.empty": "لا منشورات بعد", "feed.awaitingApproval": "بانتظار الموافقة", "feed.approve": "وافق على النشر",
+
+  "prayer.fajrPending": "الفجر ينتظر تأكيد الأهل", "prayer.dhikrAlready": "مسجّلة اليوم", "prayer.dhikrPoints": "+{n} أذكار", "prayer.fajrStreak": "فجر متتالي: {n}", "prayer.titleOf": "صلاة {name}",
+  "prayer.today": "صلوات اليوم", "prayer.status.mosque": "بالمسجد", "prayer.status.ontime": "بوقتها", "prayer.status.late": "متأخرة", "prayer.notYet": "لسا",
+  "prayer.rules": "الفجر: مسجد ٢٥ · بوقتها ١٥ · متأخرة ٥. الباقي ١٠ / ٥ / ٢. اليوم الكامل +١٠. لا عقاب أبداً.",
+  "prayer.dhikr": "الأذكار", "prayer.slot.morning": "الصباح", "prayer.slot.evening": "المساء", "prayer.slot.sleep": "النوم", "prayer.familyBoard": "لوحة الفجر العائلية", "prayer.streak": "سلسلة {n}", "prayer.confirmFajr": "أكّد الفجر",
+
+  "health.savedPoints": "تسجّل +١٠ (فحص الأحد)", "health.childNeedsParent": "وزن الأولاد يسجّله الأهل", "health.goalSaved": "حُفظ الهدف", "health.titleOf": "صحة {name}", "health.journey": "رحلتي الصحية · فحص الأحد",
+  "health.checkedIn": "سُجّل هالأسبوع", "health.notMeasured": "لسا ما انقاس", "health.trend.improving": "متحسّن", "health.trend.steady": "ثابت", "health.trend.attention": "محتاج انتباه", "health.trend.not_enough": "بداية المتابعة",
+  "health.kg": "كغ", "health.approxAge": "تقريبي للعمر", "health.sleep": "نوم (ساعات)", "health.water": "ماء (أكواب)", "health.mood": "شعوري", "health.target": "الهدف {n}", "health.addWater": "+ كوب ماء", "health.slept": "نمت {n}", "health.moodN": "شعوري {n} من ٥",
+  "health.skills": "مهاراتي", "health.best": "أفضل:", "health.newNumber": "الرقم الجديد؟", "health.log": "سجّل", "health.measure": "تسجيل القياس", "health.childNote": "يُقاس الولد بوجود أحد الأهل · +١٠ نقاط له أول مرة بالأسبوع",
+  "health.weightKg": "الوزن كغ", "health.heightCm": "الطول سم", "health.date": "التاريخ", "health.goal": "الهدف والنطاق الأخضر", "health.from": "من", "health.to": "إلى", "health.direction": "الاتجاه", "health.dir.down": "نزول", "health.dir.up": "زيادة", "health.dir.keep": "ثبات",
+  "health.visibility": "شو يشوف الولد", "health.vis.number": "الولد يرى الرقم", "health.vis.trend": "الاتجاه فقط", "health.doctorNote": "ملاحظة الطبيب", "health.scale": "ربط الميزان", "health.scaleUrl": "الرابط الذي يرسل إليه الميزان أو تطبيق الصحة:",
+  "health.scaleHelp": "آيفون: الاختصارات ← أتمتة ← «عند تسجيل عينة وزن في الصحة» ← «الحصول على محتويات URL» بطريقة POST والمحتوى أعلاه. أندرويد: Health Connect عبر MacroDroid أو IFTTT بنفس الطلب.", "health.createLink": "أنشئ رمز الربط",
+
+  "study.lessons": "دروس", "study.mastered": "متقنة", "study.average": "المعدل", "study.lessonsTitle": "الدروس", "study.empty": "لا دروس بعد. الأهل يضيفون صفحة ويُحضَّر الدرس للغد.", "study.forDay": "ليوم", "study.pointsN": "{n} نقاط",
+  "study.stage.warmup": "تمهيد", "study.stage.learn": "تعلّم", "study.stage.exam": "اختبار", "study.stage.summary": "ملخص", "study.stage.done": "خلص",
+  "study.books": "الكتب", "study.subject": "المادة", "study.bookName": "اسم الكتاب", "study.pageToLesson": "صفحة الغد ← درس", "study.book": "الكتاب", "study.page": "صفحة", "study.prepare": "حضّر درس الغد", "study.back": "→ رجوع للدروس",
+
+  "shop.brandSaved": "حُفظت الهوية", "shop.captionCopied": "نُسخ وصف إنستغرام", "shop.publicPage": "الصفحة العامة", "shop.monthSales": "مبيعات الشهر", "shop.jodShort": "د", "shop.delivered": "طلبات سُلّمت", "shop.openHours": "ساعات مفتوحة", "shop.protected": "محمي {n}/أسبوع",
+  "shop.timeGuard": "حارس الوقت: الطلبات المفتوحة أكثر من أسبوعين عمل. أجّلي مواعيد التسليم الجديدة.",
+  "shop.tab.orders": "الطلبات", "shop.tab.catalog": "الكتالوج", "shop.tab.yarn": "الخيوط", "shop.tab.brand": "الهوية",
+  "shop.status.new": "جديد", "shop.status.accepted": "مقبول", "shop.status.in_progress": "قيد العمل", "shop.status.ready": "جاهز", "shop.status.delivered": "سُلّم",
+  "shop.color": "لون", "shop.engrave": "نقش", "shop.due": "تسليم", "shop.moveTo": "← {s}", "shop.decline": "رفض الطلب", "shop.giftCard": "بطاقة الهدية", "shop.visible": "ظاهر", "shop.hidden": "مخفي", "shop.hoursDays": "{h} ساعات · {d} أيام",
+  "shop.instaCaption": "وصف إنستغرام", "shop.hide": "إخفاء", "shop.show": "إظهار", "shop.newProduct": "منتج جديد", "shop.price": "السعر", "shop.hours": "ساعات", "shop.days": "أيام", "shop.category": "القسم",
+  "shop.cat.babies": "مواليد", "shop.cat.dolls": "دمى", "shop.cat.bags": "حقائب", "shop.cat.gifts": "هدايا", "shop.priceHint": "السعر المقترح: (الساعات × {rate} د) + الخامة + ٥٪.",
+  "shop.yarnStock": "مخزون الخيوط", "shop.grams": "{n} غ", "shop.newGrams": "الغرامات الجديدة", "shop.colorName": "اسم اللون", "shop.gramsLabel": "غرامات", "shop.yarnHint": "أقل من ٥٠ غ = اللون يظهر «نفد» في الصفحة العامة.",
+  "shop.brand": "هوية المتجر", "shop.instagramPh": "معرّف إنستغرام (yun.jo)", "shop.whatsappPh": "واتساب بصيغة دولية 9627xxxxxxxx", "shop.protectedHours": "الساعات المحمية أسبوعياً (حارس الوقت)",
+
+  "settings.language": "لغة الواجهة", "settings.lang.ar": "عربي", "settings.lang.en": "English", "settings.lang.mixed": "عربي + دراسة إنجليزي",
+  "settings.langNoteParent": "المصطلحات الدينية تبقى بالعربي دائماً.", "settings.langNoteChild": "«عربي + دراسة إنجليزي»: كل الواجهة عربي، والدروس والأسئلة بالإنجليزي متل المدرسة.",
+  "settings.family": "العيلة", "settings.pointsFun": "النقاط والترفيه", "settings.pointsNote": "٣٠٪ من المكافأة توفير إجباري. الترفيه يُفتح بإتمام المهام الإلزامية، ولا عقاب.",
+  "settings.k.points_per_dinar": "نقطة لكل دينار", "settings.k.monthly_reward_cap_jod": "سقف المكافأة الشهري (د)", "settings.k.fun_minutes_weekday_stage4": "ترفيه يومي Stage 4", "settings.k.fun_minutes_weekday_stage6": "ترفيه يومي Stage 6", "settings.k.fun_minutes_weekend_stage4": "عطلة Stage 4", "settings.k.fun_minutes_weekend_stage6": "عطلة Stage 6",
+  "settings.whoSees": "مين بيشوف مين", "settings.whoSeesText": "الأب يرى الجميع. الأم ترى الأولاد والبيت ونفسها، لا الأب. كل ولد يرى حسابه فقط. «عيلتنا» مشتركة للكل.",
+
+  "sec.title": "الأمان والدخول", "sec.changePassword": "تغيير كلمة السر", "sec.email": "الإيميل", "sec.verified": "مؤكَّد", "sec.notVerified": "غير مؤكَّد",
+  "sec.emailWhy": "الإيميل بيخليك تستعيد كلمة السر إذا نسيتها، وبيوصلك تنبيه إذا تغيّرت.", "sec.mailNotReady": "خدمة الإيميل لسا مش مضبوطة على السيرفر، فما رح توصل رسائل لحد ما تنضبط.",
+  "sec.confirmWithPassword": "كلمة السر الحالية للتأكيد", "sec.updateEmail": "تحديث الإيميل", "sec.saveEmail": "حفظ الإيميل", "sec.resend": "أعد إرسال التأكيد",
+  "sec.emailSaved": "انحفظ الإيميل", "sec.verifySent": "بعتنا رابط تأكيد على {email}. افتح الإيميل واضغط الرابط.", "sec.mailNotSent": "انحفظ الإيميل بس ما قدرنا نبعت رسالة التأكيد هلأ.",
+  "sec.kidPin": "رمز دخول الولد", "sec.child": "الولد", "sec.pinDigits": "4–6 أرقام", "sec.set": "ضبط", "sec.pinChanged": "تغيّر الرمز وأُبلغ الولد", "sec.pinLock": "قفل تلقائي ١٥ دقيقة بعد ٣ محاولات خاطئة، مع إشعار لكما.",
+  "sec.resetAdmin": "إعادة ضبط كلمة سر الأم", "sec.resetAdminWhy": "للطوارئ بس: إذا نسيت كلمة سرها وما في إيميل مؤكَّد. رح تطلع من كل أجهزتها ويوصلها إشعار.", "sec.who": "الحساب",
+  "sec.newPasswordFor": "كلمة السر الجديدة لـ {name}", "sec.resetBtn": "أعد الضبط", "sec.adminReset": "تغيّرت كلمة سر {name}. بلّغها بالكلمة الجديدة.", "sec.recent": "آخر عمليات الدخول",
+
+  "audit.login": "دخول", "audit.password_fail": "محاولات كلمة سر خاطئة", "audit.pin_fail": "محاولات رمز خاطئة", "audit.password_changed": "تغيير كلمة السر", "audit.password_reset": "استعادة كلمة السر بالإيميل", "audit.password_reset_by_owner": "إعادة ضبط من الأب",
+
+  "pw.show": "إظهار", "pw.hide": "إخفاء", "pw.tooShort": "قصيرة", "pw.weak": "ضعيفة", "pw.ok": "مقبولة", "pw.good": "جيدة", "pw.strong": "قوية",
+  "pw.current": "كلمة السر الحالية", "pw.new": "كلمة السر الجديدة", "pw.again": "أعد كتابة الجديدة", "pw.rules": "٨ أحرف على الأقل. الأفضل تخلط أحرف كبيرة وصغيرة وأرقام ورموز.",
+  "pw.mismatch": "الكلمتين مش متطابقات", "pw.change": "غيّر كلمة السر", "pw.changed": "تغيّرت كلمة السر، وطلعت كل الأجهزة التانية.",
+
+  "auth.name": "الاسم", "auth.namePh": "اسمك", "auth.secret": "كلمة السر أو الرمز", "auth.enter": "دخول", "auth.forgot": "نسيت كلمة السر؟",
+  "auth.wrong": "الاسم أو كلمة السر غير صحيحة", "auth.locked": "مقفل ١٥ دقيقة بعد محاولات خاطئة", "auth.serverDown": "الخادم غير متاح، جرّب بعد شوي",
+  "auth.forgotTitle": "نسيت كلمة السر؟", "auth.forgotSub": "اكتب الإيميل المؤكَّد على حسابك، وبنبعتلك رابط تختار فيه كلمة سر جديدة.", "auth.sendLink": "ابعت الرابط",
+  "auth.forgotSent": "إذا {email} مسجّل ومؤكَّد عندنا، رح يوصلك رابط خلال دقائق. الرابط صالح ٣٠ دقيقة ومرة وحدة بس.", "auth.forgotHint": "ما وصل؟ شيك على مجلد السبام، أو جرّب بعد دقيقة.",
+  "auth.kidsNote": "الولاد: اطلبوا من بابا أو ماما يغيّروا الرمز من الإعدادات.", "auth.backToLogin": "رجوع للدخول",
+  "auth.resetTitle": "اختر كلمة سر جديدة", "auth.resetDone": "تغيّرت كلمة السر. ادخل بالكلمة الجديدة.", "auth.savePassword": "احفظ كلمة السر", "auth.requestNew": "اطلب رابط جديد",
+  "auth.verifyTitle": "تأكيد الإيميل", "auth.verifyOk": "تأكّد الإيميل. صار فيك تستعيد كلمة السر عن طريقه.", "auth.verifyBad": "الرابط غير صالح أو انتهى. اطلب رابط جديد من الإعدادات.",
+
+  "err.bad_current": "كلمة السر الحالية غير صحيحة", "err.weak": "كلمة السر لازم تكون ٨ أحرف على الأقل", "err.bad_email": "الإيميل مش صحيح", "err.email_taken": "هالإيميل مستخدم بحساب تاني",
+  "err.too_many": "محاولات كتير. استنى شوي وجرّب مرة تانية", "err.bad_token": "الرابط غير صالح أو انتهى", "err.nothing_to_verify": "ما في إيميل بحاجة تأكيد",
+  "err.owner_only": "هالخيار للأب بس", "err.parents_only": "هالخيار للأهل بس", "err.not_found": "الحساب مش موجود", "err.bad_input": "تأكد من المعلومات",
 };
-export function t(lang, key) { const l = lang === "en" ? "en" : lang === "mixed" ? "en" : "ar"; return S[l][key] ?? S.ar[key] ?? key; }
-export const dirFor = (lang) => (lang === "ar" ? "rtl" : "ltr");
+
+const en = {
+  appName: "Our Family", mainNav: "Main menu", logout: "Log out", notifications: "Notifications",
+  "nav.home": "Home", "nav.tasks": "My tasks", "nav.prayer": "Prayer", "nav.study": "Study", "nav.health": "Health", "nav.family": "Family", "nav.shop": "My shop", "nav.settings": "Settings",
+
+  "common.save": "Save", "common.add": "Add", "common.edit": "Edit", "common.confirm": "Confirm", "common.saved": "Saved", "common.notSaved": "Not saved, please try again",
+  "common.waiting": "Waiting", "common.today": "Today", "common.balance": "Balance", "common.fun": "Fun", "common.unlocked": "Open", "common.locked": "Locked",
+  "common.minutesShort": "{n} min", "common.nothingYet": "Nothing yet",
+
+  "domain.study": "Study", "domain.prayer": "Prayer", "domain.quran": "Qur'an", "domain.dhikr": "Adhkar", "domain.sport": "Sport", "domain.language": "Languages", "domain.hobby": "Hobby", "domain.health": "Health", "domain.home": "Home", "domain.fun": "Fun",
+
+  "tasks.proofPrompt": "Paste a photo or voice link as proof", "tasks.sentToParents": "Sent to your parents to confirm.", "tasks.gotPoints": "+{n} points", "tasks.needsProof": "This one needs a photo.",
+  "tasks.mandatory": "must-do", "tasks.markDone": "Done", "tasks.pointsLog": "Points log",
+
+  "home.greetOwner": "Good morning, {name}", "home.greetAdmin": "Hello {name}", "home.familyToday": "The family today", "home.waitingYou": "Waiting for you", "home.fajrStreak": "Fajr streak",
+  "home.tasksOf": "{done} of {total} tasks", "home.left": "Left:", "home.hi": "Hi {name}", "home.todayBalance": "Today +{today} · balance {balance}", "home.funTime": "Fun time",
+  "home.funUnlocked": "Open · {n} min", "home.mustDoOf": "{done}/{total} must-do", "home.todayPlan": "Today's plan",
+
+  "feed.placeholder": "Share a moment from today…", "feed.post": "Post", "feed.empty": "No posts yet", "feed.awaitingApproval": "Awaiting approval", "feed.approve": "Approve post",
+
+  "prayer.fajrPending": "Fajr is waiting for a parent to confirm", "prayer.dhikrAlready": "Already logged today", "prayer.dhikrPoints": "+{n} adhkar", "prayer.fajrStreak": "Fajr streak: {n}", "prayer.titleOf": "{name}'s prayer",
+  "prayer.today": "Today's prayers", "prayer.status.mosque": "At the mosque", "prayer.status.ontime": "On time", "prayer.status.late": "Late", "prayer.notYet": "Not yet",
+  "prayer.rules": "Fajr: mosque 25 · on time 15 · late 5. Others 10 / 5 / 2. Full day +10. Never a penalty.",
+  "prayer.dhikr": "Adhkar", "prayer.slot.morning": "Morning", "prayer.slot.evening": "Evening", "prayer.slot.sleep": "Sleep", "prayer.familyBoard": "Family Fajr board", "prayer.streak": "streak {n}", "prayer.confirmFajr": "Confirm Fajr",
+
+  "health.savedPoints": "Saved +10 (Sunday check)", "health.childNeedsParent": "A parent records the children's weight", "health.goalSaved": "Goal saved", "health.titleOf": "{name}'s health", "health.journey": "Health journey · Sunday check",
+  "health.checkedIn": "Logged this week", "health.notMeasured": "Not measured yet", "health.trend.improving": "Improving", "health.trend.steady": "Steady", "health.trend.attention": "Needs attention", "health.trend.not_enough": "Just started",
+  "health.kg": "kg", "health.approxAge": "approx. for age", "health.sleep": "Sleep (hours)", "health.water": "Water (cups)", "health.mood": "Mood", "health.target": "Target {n}", "health.addWater": "+ cup of water", "health.slept": "Slept {n}", "health.moodN": "Mood {n} of 5",
+  "health.skills": "My skills", "health.best": "Best:", "health.newNumber": "New number?", "health.log": "Log", "health.measure": "Record a measurement", "health.childNote": "Measure the child with a parent present · +10 points for the first time each week",
+  "health.weightKg": "Weight kg", "health.heightCm": "Height cm", "health.date": "Date", "health.goal": "Goal and green range", "health.from": "From", "health.to": "To", "health.direction": "Direction", "health.dir.down": "Lose", "health.dir.up": "Gain", "health.dir.keep": "Keep",
+  "health.visibility": "What the child sees", "health.vis.number": "Child sees the number", "health.vis.trend": "Trend only", "health.doctorNote": "Doctor's note", "health.scale": "Connect a scale", "health.scaleUrl": "The address your scale or health app sends to:",
+  "health.scaleHelp": "iPhone: Shortcuts → Automation → “When a weight sample is logged in Health” → “Get contents of URL” with POST and the body above. Android: Health Connect via MacroDroid or IFTTT with the same request.", "health.createLink": "Create a link code",
+
+  "study.lessons": "lessons", "study.mastered": "mastered", "study.average": "average", "study.lessonsTitle": "Lessons", "study.empty": "No lessons yet. A parent adds a page and the lesson is prepared for tomorrow.", "study.forDay": "for", "study.pointsN": "{n} points",
+  "study.stage.warmup": "Warm-up", "study.stage.learn": "Learn", "study.stage.exam": "Quiz", "study.stage.summary": "Summary", "study.stage.done": "Done",
+  "study.books": "Books", "study.subject": "Subject", "study.bookName": "Book title", "study.pageToLesson": "Tomorrow's page → lesson", "study.book": "Book", "study.page": "Page", "study.prepare": "Prepare tomorrow's lesson", "study.back": "← Back to lessons",
+
+  "shop.brandSaved": "Brand saved", "shop.captionCopied": "Instagram caption copied", "shop.publicPage": "Public page", "shop.monthSales": "Sales this month", "shop.jodShort": "JOD", "shop.delivered": "Orders delivered", "shop.openHours": "Open hours", "shop.protected": "protected {n}/week",
+  "shop.timeGuard": "Time guard: open orders exceed two weeks of work. Push new delivery dates back.",
+  "shop.tab.orders": "Orders", "shop.tab.catalog": "Catalogue", "shop.tab.yarn": "Yarn", "shop.tab.brand": "Brand",
+  "shop.status.new": "New", "shop.status.accepted": "Accepted", "shop.status.in_progress": "In progress", "shop.status.ready": "Ready", "shop.status.delivered": "Delivered",
+  "shop.color": "Colour", "shop.engrave": "Name", "shop.due": "due", "shop.moveTo": "→ {s}", "shop.decline": "Decline order", "shop.giftCard": "Gift card", "shop.visible": "Visible", "shop.hidden": "Hidden", "shop.hoursDays": "{h} hours · {d} days",
+  "shop.instaCaption": "Instagram caption", "shop.hide": "Hide", "shop.show": "Show", "shop.newProduct": "New product", "shop.price": "Price", "shop.hours": "Hours", "shop.days": "Days", "shop.category": "Category",
+  "shop.cat.babies": "Babies", "shop.cat.dolls": "Dolls", "shop.cat.bags": "Bags", "shop.cat.gifts": "Gifts", "shop.priceHint": "Suggested price: (hours × {rate} JOD) + materials + 5%.",
+  "shop.yarnStock": "Yarn stock", "shop.grams": "{n} g", "shop.newGrams": "New grams", "shop.colorName": "Colour name", "shop.gramsLabel": "Grams", "shop.yarnHint": "Under 50 g = the colour shows as “out” on the public page.",
+  "shop.brand": "Shop brand", "shop.instagramPh": "Instagram handle (yun.jo)", "shop.whatsappPh": "WhatsApp in international format 9627xxxxxxxx", "shop.protectedHours": "Protected hours per week (time guard)",
+
+  "settings.language": "Language", "settings.lang.ar": "عربي", "settings.lang.en": "English", "settings.lang.mixed": "Arabic + English study",
+  "settings.langNoteParent": "Religious terms always stay in Arabic.", "settings.langNoteChild": "“Arabic + English study”: the app is in Arabic and lessons stay in English, like school.",
+  "settings.family": "Family", "settings.pointsFun": "Points and fun time", "settings.pointsNote": "30% of rewards go to savings. Fun time opens when must-do tasks are done. No penalties.",
+  "settings.k.points_per_dinar": "Points per dinar", "settings.k.monthly_reward_cap_jod": "Monthly reward cap (JOD)", "settings.k.fun_minutes_weekday_stage4": "Daily fun Stage 4", "settings.k.fun_minutes_weekday_stage6": "Daily fun Stage 6", "settings.k.fun_minutes_weekend_stage4": "Weekend Stage 4", "settings.k.fun_minutes_weekend_stage6": "Weekend Stage 6",
+  "settings.whoSees": "Who sees whom", "settings.whoSeesText": "Dad sees everyone. Mum sees the children, the home and herself, not Dad. Each child sees only their own account. “Family” is shared by all.",
+
+  "sec.title": "Security and sign-in", "sec.changePassword": "Change password", "sec.email": "Email", "sec.verified": "Verified", "sec.notVerified": "Not verified",
+  "sec.emailWhy": "Your email lets you recover your password if you forget it, and alerts you when it changes.", "sec.mailNotReady": "Email isn't set up on the server yet, so no messages will arrive until it is.",
+  "sec.confirmWithPassword": "Current password to confirm", "sec.updateEmail": "Update email", "sec.saveEmail": "Save email", "sec.resend": "Resend confirmation",
+  "sec.emailSaved": "Email saved", "sec.verifySent": "We sent a confirmation link to {email}. Open it and tap the link.", "sec.mailNotSent": "Email saved, but the confirmation message couldn't be sent right now.",
+  "sec.kidPin": "Child's PIN", "sec.child": "Child", "sec.pinDigits": "4–6 digits", "sec.set": "Set", "sec.pinChanged": "PIN changed and the child was notified", "sec.pinLock": "Locks for 15 minutes after 3 wrong tries, and you're both notified.",
+  "sec.resetAdmin": "Reset Mum's password", "sec.resetAdminWhy": "Emergencies only: if she forgot her password and has no verified email. She'll be signed out everywhere and notified.", "sec.who": "Account",
+  "sec.newPasswordFor": "New password for {name}", "sec.resetBtn": "Reset", "sec.adminReset": "{name}'s password changed. Tell her the new one.", "sec.recent": "Recent sign-in activity",
+
+  "audit.login": "Signed in", "audit.password_fail": "Wrong password attempts", "audit.pin_fail": "Wrong PIN attempts", "audit.password_changed": "Password changed", "audit.password_reset": "Password recovered by email", "audit.password_reset_by_owner": "Reset by Dad",
+
+  "pw.show": "Show", "pw.hide": "Hide", "pw.tooShort": "Too short", "pw.weak": "Weak", "pw.ok": "OK", "pw.good": "Good", "pw.strong": "Strong",
+  "pw.current": "Current password", "pw.new": "New password", "pw.again": "Repeat new password", "pw.rules": "At least 8 characters. Mixing upper and lower case, numbers and symbols is best.",
+  "pw.mismatch": "The passwords don't match", "pw.change": "Change password", "pw.changed": "Password changed. All other devices were signed out.",
+
+  "auth.name": "Name", "auth.namePh": "Your name", "auth.secret": "Password or PIN", "auth.enter": "Sign in", "auth.forgot": "Forgot your password?",
+  "auth.wrong": "Wrong name or password", "auth.locked": "Locked for 15 minutes after wrong attempts", "auth.serverDown": "The server isn't reachable, try again shortly",
+  "auth.forgotTitle": "Forgot your password?", "auth.forgotSub": "Enter the verified email on your account and we'll send a link to choose a new password.", "auth.sendLink": "Send link",
+  "auth.forgotSent": "If {email} is registered and verified, a link will arrive within minutes. It works once and for 30 minutes.", "auth.forgotHint": "Didn't get it? Check your spam folder, or try again in a minute.",
+  "auth.kidsNote": "Kids: ask Mum or Dad to change your PIN in Settings.", "auth.backToLogin": "Back to sign in",
+  "auth.resetTitle": "Choose a new password", "auth.resetDone": "Password changed. Sign in with the new one.", "auth.savePassword": "Save password", "auth.requestNew": "Request a new link",
+  "auth.verifyTitle": "Confirm email", "auth.verifyOk": "Email confirmed. You can now recover your password with it.", "auth.verifyBad": "This link is invalid or expired. Request a new one from Settings.",
+
+  "err.bad_current": "Current password is wrong", "err.weak": "The password must be at least 8 characters", "err.bad_email": "That email isn't valid", "err.email_taken": "That email is used by another account",
+  "err.too_many": "Too many attempts. Wait a little and try again", "err.bad_token": "This link is invalid or expired", "err.nothing_to_verify": "No email needs confirming",
+  "err.owner_only": "Only Dad can do this", "err.parents_only": "Only parents can do this", "err.not_found": "Account not found", "err.bad_input": "Check the details",
+};
+
+const S = { ar, en };
+
+/** اللغة الفعلية للواجهة: «mixed» = عربي */
+export const uiLangOf = (pref) => (pref === "en" ? "en" : "ar");
+
+export function translate(lang, key, vars, fallback) {
+  let s = S[lang]?.[key] ?? (fallback !== undefined ? fallback : S.ar[key] ?? key);
+  if (vars) s = String(s).replace(/\{(\w+)\}/g, (_, k) => (vars[k] ?? ""));
+  return s;
+}
+
+export function useT() {
+  const auth = useAuth();
+  const pref = auth?.user?.uiLanguage || "ar";
+  const lang = uiLangOf(pref);
+  return {
+    lang, pref, en: lang === "en", dir: lang === "ar" ? "rtl" : "ltr", locale: lang === "ar" ? "ar-JO" : "en-GB",
+    t: (key, vars, fallback) => translate(lang, key, vars, fallback),
+    list: (arr) => (arr || []).join(lang === "ar" ? "، " : ", "),
+  };
+}
+
+/** يطبّق اللغة والاتجاه على الصفحة كلها (html) حتى تنقلب كل الأجزاء مع بعض */
+export function useDocumentLang(lang, dir, title) {
+  useEffect(() => {
+    const el = document.documentElement;
+    el.lang = lang; el.dir = dir;
+    if (title) document.title = title;
+  }, [lang, dir, title]);
+}
+
 export const ROLE_AR = { owner: "الأب", admin: "الأم", child: "ولد", teen_adult: "مراهق", relative: "قريب", helper: "مساعد", guest: "ضيف" };

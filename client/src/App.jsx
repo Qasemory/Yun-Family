@@ -2,7 +2,7 @@ import { Routes, Route, Navigate, useParams, useLocation } from "react-router-do
 import { useAuth } from "./lib/auth.jsx";
 import { fam } from "./lib/paths.js";
 import Layout from "./components/Layout.jsx";
-import Login from "./pages/Login.jsx";
+import { Login, ForgotPassword, ResetPassword, VerifyEmail } from "./pages/AuthPages.jsx";
 import Home from "./pages/Home.jsx";
 import Tasks from "./pages/Tasks.jsx";
 import Prayer from "./pages/Prayer.jsx";
@@ -39,6 +39,9 @@ export default function App() {
 
       {/* تطبيق العيلة */}
       <Route path="/family/login" element={<Login />} />
+      <Route path="/family/forgot" element={<ForgotPassword />} />
+      <Route path="/family/reset" element={<ResetPassword />} />
+      <Route path="/family/verify-email" element={<VerifyEmail />} />
       <Route path="/family/gift/:orderId" element={<Private><GiftCard /></Private>} />
       <Route path="/family" element={<Private><Layout /></Private>}>
         <Route index element={<Home />} />

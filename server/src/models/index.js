@@ -17,6 +17,15 @@ const userSchema = new Schema({
   pinHash: String,                     // الأولاد
   failedAttempts: { type: Number, default: 0 },
   lockedUntil: Date,
+  // الإيميل واستعادة كلمة السر (للأب والأم)
+  email: { type: String, trim: true, lowercase: true, index: { unique: true, sparse: true } },
+  emailVerified: { type: Boolean, default: false },
+  emailTokenHash: String,
+  emailTokenExpires: Date,
+  resetTokenHash: String,
+  resetTokenExpires: Date,
+  resetRequestedAt: Date,
+  tokenVersion: { type: Number, default: 0 },   // يزيد عند تغيير كلمة السر فيُخرج كل الأجهزة
   telegramChatId: String,
   isActive: { type: Boolean, default: true },
   sex: { type: String, enum: ["f", "m", null], default: null },

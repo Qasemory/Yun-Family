@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { get, post } from "../lib/api.js";
 import { useAuth } from "../lib/auth.jsx";
+import { useT } from "../lib/i18n.js";
 import { fam } from "../lib/paths.js";
-import { Card, Stat, Msg, Spinner } from "../components/ui.jsx";
+import { Card, Stat, Spinner } from "../components/ui.jsx";
 import TaskList from "../components/TaskList.jsx";
 
 function ParentHome() {
   const { members, user } = useAuth();
+  const { t, list } = useT();
   const kids = members.filter((m) => ["child", "teen_adult"].includes(m.role));
   const [plans, setPlans] = useState({});
   const [pending, setPending] = useState([]);
@@ -19,54 +21,62 @@ function ParentHome() {
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [members.length]);
   const confirm = async (id) => { await post(`/tasks/completion/${id}/confirm`); load(); };
   return (
-    <div className="flex flex-col gap-4">
-      <div><div className="text-2xl font-semibold">{user.role === "owner" ? "صباح الخير يا قاسم" : "أهلاً رنا"}</div><div className="text-sm text-muted">العائلة اليوم</div></div>
+    <div className="flex flex-col gap-4 lg:gap-6">
+      <div><h1 className="text-2xl lg:text-3xl font-semibold">{t(user.role === "owner" ? "home.greetOwner" : "home.greetAdmin", { name: user.displayName })}</h1><div className="text-sm text-muted">{t("home.familyToday")}</div></div>
       {pending.length > 0 && (
-        <Card title="بانتظار تأكيدك">
-          {pending.map((c) => (
-            <div key={c._id} className="flex items-center justify-between py-2 border-b border-line last:border-0">
-              <div><div className="font-semibold text-sm">{c.task?.title}</div><div className="text-xs text-muted">{c.user?.displayName} · {c.day}</div></div>
-              <button className="btn btn-sm" onClick={() => confirm(c._id)}>تأكيد +{c.task?.points}</button>
-            </div>
-          ))}
+        <Card title={t("home.waitingYou")}>
+          <div className="grid md:grid-cols-2 md:gap-x-6">
+            {pending.map((c) => (
+              <div key={c._id} className="row">
+                <div className="min-w-0"><div className="font-semibold text-sm">{c.task?.title}</div><div className="text-xs text-muted">{c.user?.displayName} · <span dir="ltr">{c.day}</span></div></div>
+                <button className="btn btn-sm" onClick={() => confirm(c._id)}>{t("common.confirm")} +{c.task?.points}</button>
+              </div>
+            ))}
+          </div>
         </Card>
       )}
-      {kids.map((k) => {
-        const p = plans[k.id];
-        return (
-          <Card key={k.id} title={<span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full" style={{ background: k.color }} />{k.displayName} <span className="text-xs text-muted font-normal">{k.grade}</span></span>} right={p && <span className="pill pill-gold">+{p.today}</span>}>
-            {!p ? <Spinner /> : (
-              <>
-                <div className="grid grid-cols-3 gap-2 mb-3"><Stat label="الرصيد" value={p.balance} /><Stat label="فجر متتالي" value={p.streaks.prayer} /><Stat label="الترفيه" value={p.fun.unlocked ? "مفتوح" : "مقفل"} sub={`${p.fun.minutes} د`} /></div>
-                <div className="text-xs text-muted">{p.plan.filter((t) => t.status === "done").length} من {p.plan.length} مهام{p.fun.pending.length ? ` · باقي: ${p.fun.pending.join("، ")}` : ""}</div>
-                <div className="flex gap-2 mt-3"><Link to={fam(`/health?u=${k.id}`)} className="btn-ghost btn-sm">الصحة</Link><Link to={fam(`/study?u=${k.id}`)} className="btn-ghost btn-sm">الدراسة</Link><Link to={`/prayer?u=${k.id}`} className="btn-ghost btn-sm">الصلاة</Link></div>
-              </>
-            )}
-          </Card>
-        );
-      })}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {kids.map((k) => {
+          const p = plans[k.id];
+          return (
+            <Card key={k.id} title={<span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full shrink-0" style={{ background: k.color }} />{k.displayName} <span className="text-xs text-muted font-normal" dir="ltr">{k.grade}</span></span>} right={p && <span className="pill pill-gold">+{p.today}</span>}>
+              {!p ? <Spinner /> : (
+                <>
+                  <div className="grid grid-cols-3 gap-2 mb-3"><Stat label={t("common.balance")} value={p.balance} /><Stat label={t("home.fajrStreak")} value={p.streaks.prayer} /><Stat label={t("common.fun")} value={p.fun.unlocked ? t("common.unlocked") : t("common.locked")} sub={t("common.minutesShort", { n: p.fun.minutes })} /></div>
+                  <div className="text-xs text-muted">{t("home.tasksOf", { done: p.plan.filter((x) => x.status === "done").length, total: p.plan.length })}{p.fun.pending.length ? ` · ${t("home.left")} ${list(p.fun.pending)}` : ""}</div>
+                  <div className="flex flex-wrap gap-2 mt-3"><Link to={fam(`/health?u=${k.id}`)} className="btn-ghost btn-sm">{t("nav.health")}</Link><Link to={fam(`/study?u=${k.id}`)} className="btn-ghost btn-sm">{t("nav.study")}</Link><Link to={fam(`/prayer?u=${k.id}`)} className="btn-ghost btn-sm">{t("nav.prayer")}</Link></div>
+                </>
+              )}
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 function ChildHome() {
-  const { user, lang } = useAuth();
+  const { user } = useAuth();
+  const { t, list } = useT();
   const [p, setP] = useState(null);
   const load = () => get("/tasks/plan").then(setP);
   useEffect(() => { load(); }, []);
   if (!p) return <Spinner />;
-  const en = lang !== "ar";
-  const mandatory = p.plan.filter((t) => t.mandatory), doneM = mandatory.filter((t) => t.status === "done").length;
+  const mandatory = p.plan.filter((x) => x.mandatory), doneM = mandatory.filter((x) => x.status === "done").length;
   return (
-    <div className="flex flex-col gap-4">
-      <div><div className="text-2xl font-semibold">{en ? `Hi ${user.displayName}` : `أهلاً ${user.displayName}`}</div><div className="text-sm text-muted">{en ? `Today +${p.today} · balance ${p.balance}` : `اليوم +${p.today} · الرصيد ${p.balance}`}</div></div>
-      <Card>
-        <div className="flex items-center justify-between"><div className="font-semibold">{en ? "Fun time" : "وقت الترفيه"}</div><span className={`pill ${p.fun.unlocked ? "pill-green" : ""}`}>{p.fun.unlocked ? (en ? `Unlocked · ${p.fun.minutes} min` : `مفتوح · ${p.fun.minutes} دقيقة`) : (en ? `${doneM}/${mandatory.length} must-do` : `${doneM} من ${mandatory.length} إلزامي`)}</span></div>
-        <div className="h-2 bg-ivory rounded-full mt-3 overflow-hidden"><div className="h-full bg-olive rounded-full transition-all" style={{ width: `${mandatory.length ? (100 * doneM) / mandatory.length : 0}%` }} /></div>
-        {!p.fun.unlocked && p.fun.pending.length > 0 && <div className="text-xs text-muted mt-2">{en ? "Left: " : "باقي: "}{p.fun.pending.join("، ")}</div>}
-      </Card>
-      <div className="section">{en ? "Today's plan" : "خطة اليوم"}</div>
-      <TaskList plan={p.plan} onChange={load} lang={lang} />
+    <div className="flex flex-col gap-4 lg:gap-6">
+      <div><h1 className="text-2xl lg:text-3xl font-semibold">{t("home.hi", { name: user.displayName })}</h1><div className="text-sm text-muted">{t("home.todayBalance", { today: p.today, balance: p.balance })}</div></div>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:items-start">
+        <Card className="lg:sticky lg:top-8">
+          <div className="flex flex-wrap items-center justify-between gap-2"><div className="font-semibold">{t("home.funTime")}</div><span className={`pill ${p.fun.unlocked ? "pill-green" : ""}`}>{p.fun.unlocked ? t("home.funUnlocked", { n: p.fun.minutes }) : t("home.mustDoOf", { done: doneM, total: mandatory.length })}</span></div>
+          <div className="h-2 bg-ivory rounded-full mt-3 overflow-hidden"><div className="h-full bg-olive rounded-full transition-all" style={{ width: `${mandatory.length ? (100 * doneM) / mandatory.length : 0}%` }} /></div>
+          {!p.fun.unlocked && p.fun.pending.length > 0 && <div className="text-xs text-muted mt-2">{t("home.left")} {list(p.fun.pending)}</div>}
+        </Card>
+        <div>
+          <div className="section mt-0">{t("home.todayPlan")}</div>
+          <TaskList plan={p.plan} onChange={load} />
+        </div>
+      </div>
     </div>
   );
 }
