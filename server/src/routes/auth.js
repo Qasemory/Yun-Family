@@ -5,6 +5,7 @@ import { User, Audit, Notification } from "../models/index.js";
 import { signToken, requireAuth, visibleMembers, isParent, isChild } from "../middleware/auth.js";
 import { notifyParents } from "../utils/points.js";
 import { sendMail, appUrl, mailConfigured } from "../utils/mailer.js";
+import { newSecret, verifyTotp, otpauthUrl } from "../utils/totp.js";
 
 const r = Router();
 const PIN_MAX = 3, PASS_MAX = 5, LOCK_MIN = 15;
@@ -58,7 +59,7 @@ async function sendVerifyEmail(user) {
 // الدخول بالاسم المكتوب (لا توجد قائمة أسماء عامة حتى لا تظهر أسماء العيلة لأي زائر)
 r.post("/login", async (req, res) => {
   if (!rateLimit(`login:${ip(req)}`, 30, 15 * 60e3)) return res.status(429).json({ error: "too_many" });
-  const { name, secret: s, password, pin } = req.body || {};
+  const { name, secret: s, password, pin, code } = req.body || {};
   const target = normName(name);
   const raw = s ?? password ?? pin;
   if (!target || !raw) return res.status(400).json({ error: "bad_login" });
@@ -86,6 +87,17 @@ r.post("/login", async (req, res) => {
     await user.save();
     return res.status(400).json({ error: "bad_login" });
   }
+  // التحقق بخطوتين: كلمة السر صح، بس لازم الرمز من تطبيق المصادقة
+  if (user.totpEnabled && !isChild(user.role)) {
+    if (!code) return res.status(401).json({ error: "need_2fa" });
+    if (!verifyTotp(user.totpSecret, code)) {
+      user.failedAttempts += 1;
+      if (user.failedAttempts >= PASS_MAX) { user.lockedUntil = new Date(Date.now() + LOCK_MIN * 60000); user.failedAttempts = 0; }
+      await user.save();
+      await Audit.create({ family: user.family, actor: user._id, action: "password_fail", severity: "alert", detail: "رمز التحقق بخطوتين غلط" });
+      return res.status(400).json({ error: "bad_2fa" });
+    }
+  }
   user.failedAttempts = 0; user.lockedUntil = undefined; await user.save();
   await Audit.create({ family: user.family, actor: user._id, action: "login" });
   res.json({ token: signToken(user), user: publicUser(user) });
@@ -110,7 +122,7 @@ r.get("/security", requireAuth, async (req, res) => {
   const recent = await Audit.find({ ...filter, action: { $in: ["login", "password_fail", "pin_fail", "password_changed", "password_reset", "password_reset_by_owner"] } })
     .sort({ createdAt: -1 }).limit(15).populate("actor", "displayName").lean();
   res.json({
-    email: req.user.email || "", emailVerified: !!req.user.emailVerified, mailReady: mailConfigured(),
+    email: req.user.email || "", emailVerified: !!req.user.emailVerified, mailReady: mailConfigured(), totpEnabled: !!req.user.totpEnabled,
     recent: recent.map((a) => ({ id: a._id, action: a.action, who: a.actor?.displayName || "", at: a.createdAt, detail: a.detail || "" })),
   });
 });
@@ -225,6 +237,41 @@ r.post("/reset", async (req, res) => {
   await setPassword(user, password); await user.save();
   await Audit.create({ family: user.family, actor: user._id, action: "password_reset", severity: "alert" });
   await mailPasswordChanged(user);
+  res.json({ ok: true });
+});
+
+// ---------- التحقق بخطوتين (الأهل) ----------
+r.post("/2fa/setup", requireAuth, async (req, res) => {
+  if (!isParent(req.user.role)) return res.status(403).json({ error: "parents_only" });
+  const user = await User.findById(req.user._id);
+  if (user.totpEnabled) return res.status(400).json({ error: "already_on" });
+  user.totpPending = newSecret(); await user.save();
+  res.json({ secret: user.totpPending, url: otpauthUrl(user.totpPending, user.displayName, "عيلتنا") });
+});
+r.post("/2fa/enable", requireAuth, async (req, res) => {
+  const user = await User.findById(req.user._id);
+  if (!user.totpPending || !verifyTotp(user.totpPending, req.body?.code)) return res.status(400).json({ error: "bad_2fa" });
+  user.totpSecret = user.totpPending; user.totpPending = undefined; user.totpEnabled = true; await user.save();
+  await Audit.create({ family: user.family, actor: user._id, action: "2fa_on", severity: "alert" });
+  res.json({ ok: true });
+});
+r.post("/2fa/disable", requireAuth, async (req, res) => {
+  const user = await User.findById(req.user._id);
+  if (!user.totpEnabled) return res.json({ ok: true });
+  if (!(await bcrypt.compare(String(req.body?.password || ""), user.passwordHash || ""))) return res.status(400).json({ error: "bad_current" });
+  if (!verifyTotp(user.totpSecret, req.body?.code)) return res.status(400).json({ error: "bad_2fa" });
+  user.totpEnabled = false; user.totpSecret = undefined; await user.save();
+  await Audit.create({ family: user.family, actor: user._id, action: "2fa_off", severity: "alert" });
+  res.json({ ok: true });
+});
+// الأب يطفي التحقق بخطوتين للأم إذا ضاع موبايلها
+r.post("/2fa/reset-for", requireAuth, async (req, res) => {
+  if (req.user.role !== "owner") return res.status(403).json({ error: "owner_only" });
+  const target = await User.findOne({ _id: req.body?.userId, family: req.user.family, role: "admin" });
+  if (!target) return res.status(404).json({ error: "not_found" });
+  target.totpEnabled = false; target.totpSecret = undefined; target.totpPending = undefined; await target.save();
+  await Notification.create({ user: target._id, kind: "security", body: `${req.user.displayName} أطفى التحقق بخطوتين لحسابك. فعّله من جديد من الإعدادات.` });
+  await Audit.create({ family: req.user.family, actor: req.user._id, action: "2fa_reset_by_owner", severity: "alert", detail: target.displayName });
   res.json({ ok: true });
 });
 

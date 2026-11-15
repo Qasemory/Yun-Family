@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import QRCode from "qrcode";
 import { get, post, setToken } from "../lib/api.js";
 import { useAuth } from "../lib/auth.jsx";
 import { useT } from "../lib/i18n.js";
@@ -141,6 +142,95 @@ function RecentActivity({ recent }) {
   );
 }
 
+/** التحقق بخطوتين: رمز من تطبيق المصادقة فوق كلمة السر */
+function TwoFactor({ sec, reload }) {
+  const { t } = useT();
+  const [setup, setSetup] = useState(null);   // { secret, url, qr }
+  const [code, setCode] = useState("");
+  const [pw, setPw] = useState("");
+  const [msg, setMsg] = useState(null);
+  const start = async () => {
+    setMsg(null);
+    try { const r = await post("/auth/2fa/setup"); setSetup({ ...r, qr: await QRCode.toDataURL(r.url, { margin: 1, width: 220 }) }); }
+    catch (ex) { setMsg({ kind: "err", text: errText(t, ex) }); }
+  };
+  const enable = async (e) => {
+    e.preventDefault();
+    try { await post("/auth/2fa/enable", { code }); setSetup(null); setCode(""); setMsg({ kind: "ok", text: t("tfa.enabled") }); reload(); }
+    catch { setMsg({ kind: "err", text: t("tfa.badCode") }); }
+  };
+  const disable = async (e) => {
+    e.preventDefault();
+    try { await post("/auth/2fa/disable", { password: pw, code }); setPw(""); setCode(""); setMsg({ kind: "ok", text: t("tfa.disabled") }); reload(); }
+    catch (ex) { setMsg({ kind: "err", text: ex?.data?.error === "bad_current" ? t("err.bad_current") : t("tfa.badCode") }); }
+  };
+  const codeInput = <input inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} placeholder="123456" dir="ltr" className="text-center tracking-[.4em] w-40" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} aria-label={t("tfa.code")} />;
+  return (
+    <Card title={t("tfa.title")} right={<span className={`pill ${sec.totpEnabled ? "pill-green" : ""}`}>{sec.totpEnabled ? t("ai.on") : t("ai.offShort")}</span>}>
+      <div className="text-xs text-muted mb-3">{t("tfa.why")}</div>
+      {sec.totpEnabled ? (
+        <form onSubmit={disable} className="flex flex-col gap-2">
+          <div className="text-sm">{t("tfa.toDisable")}</div>
+          <PasswordInput autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder={t("sec.current")} />
+          {codeInput}
+          <button className="btn-ghost sm:self-start" disabled={!pw || code.length !== 6}>{t("tfa.disable")}</button>
+        </form>
+      ) : setup ? (
+        <form onSubmit={enable} className="flex flex-col gap-2">
+          <ol className="text-sm list-decimal ps-5 flex flex-col gap-1"><li>{t("tfa.step1")}</li><li>{t("tfa.step2")}</li><li>{t("tfa.step3")}</li></ol>
+          <img src={setup.qr} alt={t("tfa.qrAlt")} className="w-44 h-44 border border-line rounded-xl self-center sm:self-start" />
+          <div className="text-xs text-muted">{t("tfa.manual")} <code dir="ltr" className="select-all break-all bg-ivory px-1 rounded">{setup.secret}</code></div>
+          {codeInput}
+          <div className="flex gap-2"><button className="btn" disabled={code.length !== 6}>{t("tfa.enable")}</button><button type="button" className="btn-ghost" onClick={() => setSetup(null)}>{t("common.cancel")}</button></div>
+        </form>
+      ) : <button className="btn sm:self-start" onClick={start}>{t("tfa.start")}</button>}
+      {msg && <div className="mt-2"><Msg kind={msg.kind}>{msg.text}</Msg></div>}
+    </Card>
+  );
+}
+
+function Reset2faAdmin({ admins }) {
+  const { t } = useT();
+  const [msg, setMsg] = useState(null);
+  if (!admins.length) return null;
+  const go = async (a) => {
+    if (!window.confirm(t("tfa.resetConfirm", { name: a.displayName }))) return;
+    try { await post("/auth/2fa/reset-for", { userId: a.id }); setMsg({ kind: "ok", text: t("tfa.resetDone", { name: a.displayName }) }); }
+    catch (ex) { setMsg({ kind: "err", text: errText(t, ex) }); }
+  };
+  return (
+    <div className="text-xs text-muted">
+      {admins.map((a) => <button key={a.id} className="underline me-3" onClick={() => go(a)}>{t("tfa.resetFor", { name: a.displayName })}</button>)}
+      {msg && <div className="mt-2"><Msg kind={msg.kind}>{msg.text}</Msg></div>}
+    </div>
+  );
+}
+
+/** ربط تيليجرام: الإشعارات توصل على تيليجرام + أوامر سريعة */
+export function TelegramCard() {
+  const { t } = useT();
+  const [st, setSt] = useState(null);
+  const [link, setLink] = useState(null);
+  const load = () => get("/telegram/status").then(setSt).catch(() => setSt({ ready: false }));
+  useEffect(() => { load(); }, []);
+  if (!st) return null;
+  const make = async () => { try { setLink(await post("/telegram/link")); } catch { setLink(null); } };
+  const unlink = async () => { await post("/telegram/unlink"); setLink(null); load(); };
+  return (
+    <Card title="Telegram" right={<span className={`pill ${st.linked ? "pill-green" : ""}`}>{st.linked ? t("tg.linked") : t("tg.notLinked")}</span>}>
+      {!st.ready ? <div className="text-sm text-muted">{t("tg.off")}</div> : st.linked ? (
+        <div className="flex flex-col gap-2"><div className="text-sm">{t("tg.linkedText")}</div><button className="btn-ghost btn-sm self-start" onClick={unlink}>{t("tg.unlink")}</button></div>
+      ) : link ? (
+        <div className="flex flex-col gap-2 text-sm">
+          {link.url ? <a className="btn self-start" href={link.url} target="_blank" rel="noreferrer">{t("tg.open")}</a> : null}
+          <div className="text-xs text-muted">{t("tg.manual", { bot: link.bot ? `@${link.bot}` : "" })} <code dir="ltr" className="select-all bg-ivory px-1 rounded">/start {link.code}</code></div>
+          <button className="btn-ghost btn-sm self-start" onClick={load}>{t("tg.check")}</button>
+        </div>
+      ) : <div className="flex flex-col gap-2"><div className="text-sm">{t("tg.why")}</div><button className="btn btn-sm self-start" onClick={make}>{t("tg.link")}</button></div>}
+    </Card>
+  );
+}
+
 function AiStatus() {
   const { t } = useT();
   const [a, setA] = useState(null);
@@ -186,6 +276,7 @@ export default function Settings() {
         </Card>
       </div>
 
+      {!isParent && <div className="grid gap-4 lg:grid-cols-2"><TelegramCard /></div>}
       {isParent && (
         <>
           <h2 className="section text-base text-ink mt-4">{t("sec.title")}</h2>
@@ -193,7 +284,9 @@ export default function Settings() {
             <ChangePassword />
             {sec ? <EmailCard key={sec.email} sec={sec} reload={loadSec} /> : <Card title={t("sec.email")}><Spinner /></Card>}
             <KidPin kids={kids} />
+            {sec && <div className="flex flex-col gap-2"><TwoFactor sec={sec} reload={loadSec} />{user.role === "owner" && <Reset2faAdmin admins={admins} />}</div>}
             {user.role === "owner" && <ResetAdmin admins={admins} />}
+            <TelegramCard />
             {sec && <RecentActivity recent={sec.recent} />}
             <AiStatus />
           </div>

@@ -1,22 +1,37 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { post } from "../lib/api.js";
+import { shrinkImage } from "../lib/image.js";
 import { useT } from "../lib/i18n.js";
 import { Msg } from "./ui.jsx";
 
 export default function TaskList({ plan, onChange }) {
   const { t } = useT();
   const [msg, setMsg] = useState(null);
-  const done = async (task) => {
-    let proofUrl;
-    if (task.needsProof) { proofUrl = window.prompt(t("tasks.proofPrompt")) || ""; if (!proofUrl) return; }
+  const [busy, setBusy] = useState("");
+  const fileRef = useRef(null);
+  const proofFor = useRef(null);
+  const send = async (task, proofImage) => {
+    setBusy(task._id); setMsg(null);
     try {
-      const r = await post(`/tasks/${task._id}/done`, { proofUrl });
-      setMsg(r.status === "pending_confirm" ? { kind: "warn", text: t("tasks.sentToParents") } : { kind: "ok", text: t("tasks.gotPoints", { n: r.points }) });
+      const r = await post(`/tasks/${task._id}/done`, proofImage ? { proofImage } : {});
+      const badge = r.badges?.length ? ` ${t("journey.newBadge")}` : "";
+      setMsg(r.status === "pending_confirm" ? { kind: "warn", text: t("tasks.sentToParents") } : { kind: "ok", text: t("tasks.gotPoints", { n: r.points }) + badge });
       onChange?.();
-    } catch (e) { setMsg({ kind: "err", text: e.data?.reason === "needs_proof" ? t("tasks.needsProof") : t("common.notSaved") }); }
+    } catch (e) { setMsg({ kind: "err", text: e.data?.reason === "needs_proof" ? t("tasks.needsProof") : e.message === "bad_image" ? t("common.badImage") : t("common.notSaved") }); }
+    setBusy("");
+  };
+  const done = (task) => {
+    if (task.needsProof) { proofFor.current = task; fileRef.current?.click(); return; }
+    send(task);
+  };
+  const onPhoto = async (e) => {
+    const f = e.target.files?.[0]; e.target.value = "";
+    const task = proofFor.current; if (!f || !task) return;
+    try { send(task, await shrinkImage(f, 1280, 0.8)); } catch { setMsg({ kind: "err", text: t("common.badImage") }); }
   };
   return (
     <div className="flex flex-col gap-2">
+      <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onPhoto} />
       {msg && <Msg kind={msg.kind}>{msg.text}</Msg>}
       {plan.map((task) => (
         <div key={task._id} className={`card flex items-center gap-3 ${task.status === "done" ? "opacity-70" : ""}`}>
@@ -28,7 +43,7 @@ export default function TaskList({ plan, onChange }) {
           <div className="shrink-0">
             {task.status === "done" ? <span className="pill pill-green">+{task.points}</span>
               : task.status === "pending_confirm" ? <span className="pill pill-gold">{t("common.waiting")}</span>
-              : <button className="btn btn-sm" onClick={() => done(task)}>{t("tasks.markDone")} +{task.points}</button>}
+              : <button className="btn btn-sm" disabled={busy === task._id} onClick={() => done(task)}>{busy === task._id ? "…" : <>{task.needsProof ? "📷 " : ""}{t("tasks.markDone")} +{task.points}</>}</button>}
           </div>
         </div>
       ))}

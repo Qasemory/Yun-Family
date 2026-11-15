@@ -27,3 +27,17 @@
   .reading-en { @apply font-en text-[18px] sm:text-[19px] leading-[1.8]; direction: ltr; text-align: left; unicode-bidi: isolate; }
   .row { @apply flex flex-wrap items-center justify-between gap-2 py-2 border-b border-line last:border-0; }
 }
+
+/* قطار المهام */
+.train-loco { transition: inset-inline-start .9s cubic-bezier(.4,.1,.2,1); }
+[dir="ltr"] .train-face { display: inline-block; transform: scaleX(-1); }
+.train-smoke { position: absolute; top: -6px; inset-inline-end: -2px; width: 8px; height: 8px; border-radius: 9999px; background: #cfd6d4; opacity: 0; }
+.train-moving .train-smoke { animation: puff 1s ease-out 2; }
+.train-moving .train-smoke:nth-child(2) { animation-delay: .3s; }
+@keyframes puff { 0% { opacity: .9; transform: translate(0,0) scale(.6); } 100% { opacity: 0; transform: translate(6px,-14px) scale(1.6); } }
+.badge-pop { animation: pop .6s ease-out; }
+@keyframes pop { 0% { transform: scale(.4); opacity: 0; } 70% { transform: scale(1.15); } 100% { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .train-loco { transition: none; }
+  .train-moving .train-smoke, .badge-pop { animation: none; }
+}

@@ -1,22 +1,13 @@
 // المهام الدورية داخل نفس الخدمة (Render خدمة واحدة): تذكير الصلاة، فحص الأحد، ملخص المساء
 import cron from "node-cron";
-import { User, Family, Notification } from "./models/index.js";
+import { User, Family } from "./models/index.js";
+import { notify } from "./utils/notify.js";
 import { checkinMissing, CHECKIN_POINTS, weeklyMessage } from "./utils/weight.js";
 import { dayPlan, todayPoints } from "./utils/points.js";
 import { PRAYER_AR } from "./utils/worship.js";
 
 const TZ = process.env.TZ || "Asia/Amman";
 const PRAYER_TIMES = { fajr: "04:52", dhuhr: "11:25", asr: "14:20", maghrib: "16:50", isha: "18:10" }; // تقريبية لعمّان؛ تُربط بمصدر مواقيت لاحقاً
-
-async function telegram(chatId, text) {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (!token || !chatId) return;
-  try { await fetch(`https://api.telegram.org/bot${token}/sendMessage`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ chat_id: chatId, text }) }); } catch { /* تجاهل */ }
-}
-async function notify(user, kind, body) {
-  await Notification.create({ user: user._id, kind, body });
-  await telegram(user.telegramChatId, body);
-}
 
 export function startScheduler() {
   // تذكير الصلاة لحظة الأذان

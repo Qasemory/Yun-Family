@@ -1,4 +1,4 @@
-import { Completion, PointsLedger, Task, Notification, User } from "../models/index.js";
+import { Completion, PointsLedger, Task } from "../models/index.js";
 import { today, weekday, isWeekend, addDays } from "./dates.js";
 import { getSettings } from "./settings.js";
 
@@ -65,7 +65,4 @@ export async function streakDays(userId, domainKey, day = today()) {
   return n;
 }
 
-export async function notifyParents(familyId, kind, body) {
-  const parents = await User.find({ family: familyId, role: { $in: ["owner", "admin"] } }).select("_id").lean();
-  await Notification.insertMany(parents.map((p) => ({ user: p._id, kind, body })));
-}
+export { notifyParents } from "./notify.js";

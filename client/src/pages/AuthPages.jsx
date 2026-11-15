@@ -28,11 +28,17 @@ export function Login() {
   const [secret, setSecret] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [need2fa, setNeed2fa] = useState(false);
+  const [code, setCode] = useState("");
   useEffect(() => { if (user) nav(fam(), { replace: true }); }, [user, nav]);
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setErr("");
-    try { await login(name, secret); nav(fam(), { replace: true }); }
-    catch (ex) { setErr(ex.status === 423 ? t("auth.locked") : ex.status === 429 ? t("err.too_many") : ex.status === 400 ? t("auth.wrong") : t("auth.serverDown")); }
+    try { await login(name, secret, need2fa ? code : undefined); nav(fam(), { replace: true }); }
+    catch (ex) {
+      if (ex.message === "need_2fa") { setNeed2fa(true); setErr(""); }
+      else if (ex.message === "bad_2fa") { setErr(t("tfa.badCode")); setCode(""); }
+      else setErr(ex.status === 423 ? t("auth.locked") : ex.status === 429 ? t("err.too_many") : ex.status === 400 ? t("auth.wrong") : t("auth.serverDown"));
+    }
     finally { setBusy(false); }
   };
   return (
@@ -42,8 +48,15 @@ export function Login() {
         <input id="login-name" autoFocus autoComplete="username" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("auth.namePh")} />
         <label className="text-sm font-semibold mt-2" htmlFor="login-secret">{t("auth.secret")}</label>
         <PasswordInput id="login-secret" value={secret} onChange={(e) => setSecret(e.target.value)} className="[&_input]:text-center [&_input]:tracking-widest" />
+        {need2fa && (
+          <>
+            <label className="text-sm font-semibold mt-2" htmlFor="login-code">{t("tfa.code")}</label>
+            <input id="login-code" autoFocus inputMode="numeric" autoComplete="one-time-code" maxLength={6} dir="ltr" className="text-center tracking-[.4em]" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} />
+            <div className="text-xs text-muted">{t("tfa.loginHint")}</div>
+          </>
+        )}
         {err && <Msg kind="err">{err}</Msg>}
-        <button className="btn mt-2" disabled={busy || !name.trim() || !secret}>{busy ? "…" : t("auth.enter")}</button>
+        <button className="btn mt-2" disabled={busy || !name.trim() || !secret || (need2fa && code.length !== 6)}>{busy ? "…" : t("auth.enter")}</button>
         <Link to={fam("/forgot")} className="text-center text-sm text-olive mt-2">{t("auth.forgot")}</Link>
       </form>
     </AuthShell>

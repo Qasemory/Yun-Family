@@ -1,7 +1,7 @@
 // الصفحة العامة لمتجر «يون كروشيه» — بدون حساب، هوية مستقلة (كريمي + بني)
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
-import { api, post } from "../lib/api.js";
+import { api, post, imgSrc } from "../lib/api.js";
 import { useDocumentLang } from "../lib/i18n.js";
 import YarnIcon from "../components/YarnIcon.jsx";
 
@@ -67,7 +67,7 @@ export default function Store() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mt-4">
               {list.map((p) => (
                 <Link key={p._id} to={`/p/${p.slug}?lang=${lang}`} className="group bg-white rounded-2xl p-2 sm:p-3 border border-shop-line hover:shadow-md transition min-w-0">
-                  <div className="aspect-square rounded-xl bg-shop-sand overflow-hidden">{p.imageUrl && <img src={p.imageUrl} alt={pName(p)} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition" />}</div>
+                  <div className="aspect-square rounded-xl bg-shop-sand overflow-hidden">{p.imageUrl && <img src={imgSrc(p.imageUrl)} alt={pName(p)} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition" />}</div>
                   <div className="mt-2 font-semibold text-sm sm:text-base truncate">{pName(p)}</div>
                   <div className="text-[11px] sm:text-xs text-[#9A8273]">{ar ? `حسب الطلب · ${p.days} أيام` : `Made to order · ${p.days} days`}</div>
                   <div className="text-shop-brown font-bold">{p.price} {ar ? "د.أ" : "JOD"}</div>
@@ -80,7 +80,7 @@ export default function Store() {
           <div className="mt-5 sm:mt-8">
             <Link to={`/?lang=${lang}`} className="inline-block text-sm text-[#9A8273] mb-4">{ar ? "→ كل المنتجات" : "← All products"}</Link>
             <div className="lg:grid lg:grid-cols-2 lg:gap-10 lg:items-start">
-              <div className="aspect-[4/3] sm:aspect-[16/10] lg:aspect-square rounded-3xl bg-shop-sand overflow-hidden lg:sticky lg:top-8">{product.imageUrl && <img src={product.imageUrl} alt={pName(product)} className="w-full h-full object-cover" />}</div>
+              <div className="aspect-[4/3] sm:aspect-[16/10] lg:aspect-square rounded-3xl bg-shop-sand overflow-hidden lg:sticky lg:top-8">{product.imageUrl && <img src={imgSrc(product.imageUrl)} alt={pName(product)} className="w-full h-full object-cover" />}</div>
               <div className="mt-4 lg:mt-0">
                 <h1 className="text-2xl sm:text-3xl font-semibold">{pName(product)}</h1>
                 <div className="text-shop-brown font-bold text-xl sm:text-2xl mt-1">{product.price} {ar ? "د.أ" : "JOD"}</div>

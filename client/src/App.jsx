@@ -14,6 +14,8 @@ import Shop from "./pages/Shop.jsx";
 import Store from "./pages/Store.jsx";
 import GiftCard from "./pages/GiftCard.jsx";
 import Settings from "./pages/Settings.jsx";
+import Friend from "./pages/Friend.jsx";
+import Programs from "./pages/Programs.jsx";
 
 function Private({ children }) {
   const { loading, user } = useAuth();
@@ -53,6 +55,8 @@ export default function App() {
         <Route path="lesson/:id" element={<Lesson />} />
         <Route path="shop" element={<Shop />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="friend" element={<Friend />} />
+        <Route path="programs" element={<Programs />} />
         <Route path="*" element={<Navigate to={fam()} replace />} />
       </Route>
 

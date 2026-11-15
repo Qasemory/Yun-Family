@@ -4,6 +4,7 @@ import { Book, Page, Lesson, User } from "../models/index.js";
 import { prepareLesson, gradeAnswer, gradeExam, explainAgain, pageImageToText } from "../utils/study.js";
 import { aiReady } from "../utils/ai.js";
 import { award } from "../utils/points.js";
+import { checkBadges } from "../utils/journey.js";
 import { addDays, today } from "../utils/dates.js";
 
 const r = Router();
@@ -118,7 +119,7 @@ r.post("/lesson/:id/exam", async (req, res) => {
   l.score = g.score; l.mastered = g.score >= 90; l.stage = "summary";
   l.summary = g.summary; l.parentNote = g.parentNote; l.examDetail = g.detail;
   await l.save();
-  if (l.mastered) await award(l.user, 20, `إتقان: ${l.title}`, "lesson");
+  if (l.mastered) { await award(l.user, 20, `إتقان: ${l.title}`, "lesson"); const kid = await User.findById(l.user).lean(); if (kid) await checkBadges(kid); }
   res.json({ score: g.score, detail: g.detail, mastered: l.mastered, summary: l.summary });
 });
 r.post("/lesson/:id/finish", async (req, res) => {

@@ -3,6 +3,7 @@ import { requireAuth, isParent, isChild } from "../middleware/auth.js";
 import { Post, User, Notification } from "../models/index.js";
 import { award } from "../utils/points.js";
 import { askJSON, S } from "../utils/ai.js";
+import { saveImage } from "../utils/images.js";
 
 const r = Router();
 r.use(requireAuth);
@@ -16,7 +17,9 @@ r.get("/", async (req, res) => {
   res.json({ posts, touches: TOUCHES });
 });
 r.post("/", async (req, res) => {
-  const { text, imageUrl, kind } = req.body || {};
+  const { text, kind, image } = req.body || {};
+  let imageUrl;
+  if (image) { imageUrl = await saveImage(image, { family: req.user.family, owner: req.user._id, purpose: "post" }); if (!imageUrl) return res.status(400).json({ error: "bad_image" }); }
   if (!text && !imageUrl) return res.status(400).json({ error: "empty" });
   let note = SENSITIVE.some((w) => (text || "").toLowerCase().includes(w)) ? "فيه كلمة حساسة (مدرسة/عنوان/هاتف)." : "";
   // منشورات الولاد: فحص مبدئي بالذكاء الاصطناعي (معلومات شخصية، تنمّر، كلام مؤذٍ أو حزين يحتاج انتباه)
@@ -33,6 +36,7 @@ flag = true only if the post shares personal location/contact details (address, 
     if (m?.flag) note = m.reason || "يحتاج نظرة من الأهل.";
   }
   // الصغير (Stage 4) ينشر بموافقة؛ وأي منشور فيه ملاحظة يروح للموافقة
+  if (!note && imageUrl && isChild(req.user.role)) note = "فيه صورة من الولد.";
   const needsApproval = (isChild(req.user.role) && (req.user.grade || "").startsWith("Stage 4")) || !!note;
   const post = await Post.create({ family: req.user.family, author: req.user._id, text, imageUrl, kind: kind || "post", status: needsApproval ? "pending" : "published", note: note || undefined });
   if (needsApproval) {

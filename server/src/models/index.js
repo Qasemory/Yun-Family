@@ -27,6 +27,12 @@ const userSchema = new Schema({
   resetRequestedAt: Date,
   tokenVersion: { type: Number, default: 0 },   // يزيد عند تغيير كلمة السر فيُخرج كل الأجهزة
   telegramChatId: String,
+  telegramLinkCode: String,
+  telegramLinkExpires: Date,
+  // التحقق بخطوتين (TOTP) للأهل
+  totpSecret: String,
+  totpPending: String,
+  totpEnabled: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true },
   sex: { type: String, enum: ["f", "m", null], default: null },
   birthDate: String,                   // YYYY-MM-DD
@@ -54,6 +60,7 @@ const completionSchema = new Schema({
   proofUrl: String,
   source: { type: String, default: "web" },
   confirmedBy: { type: Schema.Types.ObjectId, ref: "User" },
+  note: String,                                               // سبب الرفض
 }, { timestamps: true });
 completionSchema.index({ task: 1, day: 1 }, { unique: true });
 
@@ -207,6 +214,90 @@ const lessonSchema = new Schema({
   aiPrepared: { type: Boolean, default: false },
 }, { timestamps: true });
 
+// ---- الرحلة: الشارات والمكافآت وقطار العيلة ----
+const badgeSchema = new Schema({
+  user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+  key: { type: String, required: true },
+  day: String,
+}, { timestamps: true });
+badgeSchema.index({ user: 1, key: 1 }, { unique: true });
+
+const rewardSchema = new Schema({
+  family: { type: Schema.Types.ObjectId, ref: "Family", required: true, index: true },
+  title: { type: String, required: true },
+  icon: { type: String, default: "🎁" },
+  cost: { type: Number, required: true },
+  active: { type: Boolean, default: true },
+}, { timestamps: true });
+
+const redemptionSchema = new Schema({
+  family: { type: Schema.Types.ObjectId, ref: "Family", required: true, index: true },
+  user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+  reward: { type: Schema.Types.ObjectId, ref: "Reward" },
+  title: String, icon: String, cost: Number,
+  status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
+  decidedBy: { type: Schema.Types.ObjectId, ref: "User" },
+}, { timestamps: true });
+
+// ---- الصور (مخزّنة بقاعدة البيانات لأن قرص Render مؤقت) ----
+const imageSchema = new Schema({
+  key: { type: String, required: true, unique: true },
+  family: { type: Schema.Types.ObjectId, ref: "Family" },
+  owner: { type: Schema.Types.ObjectId, ref: "User" },
+  mime: String,
+  data: Buffer,
+  size: Number,
+  purpose: String,               // product | proof | post
+}, { timestamps: true });
+
+// ---- مشاريع الكروشيه (عدّاد الصفوف والمؤقّت) ----
+const projectSchema = new Schema({
+  owner: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+  title: { type: String, required: true },
+  order: { type: Schema.Types.ObjectId, ref: "Order" },
+  rows: { type: Number, default: 0 },
+  rowsTarget: { type: Number, default: 0 },
+  minutes: { type: Number, default: 0 },
+  timerStartedAt: Date,
+  notes: String,
+  status: { type: String, enum: ["active", "done"], default: "active" },
+}, { timestamps: true });
+
+// ---- برامجي (للأهل، خاصة بكل شخص): الأعمال والمال والقرارات ----
+const workItemSchema = new Schema({
+  user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+  title: { type: String, required: true },
+  due: String, priority: { type: String, enum: ["high", "normal", "low"], default: "normal" },
+  status: { type: String, enum: ["todo", "doing", "done"], default: "todo" },
+  note: String,
+}, { timestamps: true });
+
+const moneySchema = new Schema({
+  user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+  day: { type: String, required: true },
+  kind: { type: String, enum: ["income", "expense"], required: true },
+  amount: { type: Number, required: true },
+  category: String, note: String,
+}, { timestamps: true });
+
+const decisionSchema = new Schema({
+  user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+  title: { type: String, required: true },
+  options: String, choice: String, reason: String,
+  reviewOn: String, outcome: String,
+  status: { type: String, enum: ["open", "decided", "reviewed"], default: "open" },
+  ai: { type: Object },          // { pros, cons, questions, tip }
+}, { timestamps: true });
+
+// ---- صديقي (محادثة آمنة للأولاد يراها الأهل) ----
+const friendMsgSchema = new Schema({
+  user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+  from: { type: String, enum: ["kid", "friend"], required: true },
+  text: { type: String, required: true },
+  day: { type: String, index: true },
+  concern: { type: String, default: "none" },   // none | low | high
+}, { timestamps: true });
+
 export const Family = model("Family", familySchema);
 export const User = model("User", userSchema);
 export const Task = model("Task", taskSchema);
@@ -227,4 +318,13 @@ export const Post = model("Post", postSchema);
 export const Book = model("Book", bookSchema);
 export const Page = model("Page", pageSchema);
 export const Lesson = model("Lesson", lessonSchema);
+export const Badge = model("Badge", badgeSchema);
+export const Reward = model("Reward", rewardSchema);
+export const Redemption = model("Redemption", redemptionSchema);
+export const Image = model("Image", imageSchema);
+export const Project = model("Project", projectSchema);
+export const WorkItem = model("WorkItem", workItemSchema);
+export const Money = model("Money", moneySchema);
+export const Decision = model("Decision", decisionSchema);
+export const FriendMsg = model("FriendMsg", friendMsgSchema);
 export { ROLES };

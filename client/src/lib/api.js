@@ -16,3 +16,6 @@ export async function api(path, { method = "GET", body, auth = true } = {}) {
 export const get = (p) => api(p);
 export const post = (p, body) => api(p, { method: "POST", body });
 export const patch = (p, body) => api(p, { method: "PATCH", body });
+export const del = (p) => api(p, { method: "DELETE" });
+/** روابط الصور المخزّنة بالسيرفر (/api/img/...) تحتاج عنوان الباك */
+export const imgSrc = (u) => (u && u.startsWith("/api/") ? `${API_BASE}${u}` : u || "");

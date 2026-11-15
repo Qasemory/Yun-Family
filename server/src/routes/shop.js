@@ -1,7 +1,8 @@
 // إدارة متجر رنا (يون كروشيه) + الصفحة العامة
 import { Router } from "express";
 import { requireAuth, isParent } from "../middleware/auth.js";
-import { Product, Order, Customer, Yarn, User, Notification } from "../models/index.js";
+import { Product, Order, Customer, Yarn, User, Notification, Project } from "../models/index.js";
+import { saveImage, deleteImage } from "../utils/images.js";
 import { getSettings, setSetting, brandFrom } from "../utils/settings.js";
 import { today, addDays } from "../utils/dates.js";
 import { askJSON, aiReady, imageBlock, S } from "../utils/ai.js";
@@ -78,10 +79,60 @@ admin.get("/", async (req, res) => {
 admin.post("/product", async (req, res) => {
   const owner = await shopOwner();
   const b = req.body || {};
-  const p = await Product.create({ owner: owner._id, slug: b.slug ? slugify(b.slug) : slugify(b.nameEn || b.nameAr), nameAr: b.nameAr, nameEn: b.nameEn, descAr: b.descAr, descEn: b.descEn, category: b.category, price: +b.price, hours: +b.hours || 4, days: +b.days || 5, colors: b.colors || [], imageUrl: b.imageUrl });
+  let imageUrl = b.imageUrl;
+  if (b.image) { imageUrl = await saveImage(b.image, { family: owner.family, owner: owner._id, purpose: "product" }); if (!imageUrl) return res.status(400).json({ error: "bad_image" }); }
+  let slug = b.slug ? slugify(b.slug) : slugify(b.nameEn || b.nameAr);
+  if (await Product.exists({ slug })) slug = `${slug}-${Date.now().toString(36)}`;
+  const p = await Product.create({ owner: owner._id, slug, nameAr: b.nameAr, nameEn: b.nameEn, descAr: b.descAr, descEn: b.descEn, category: b.category, price: +b.price, hours: +b.hours || 4, days: +b.days || 5, colors: b.colors || [], imageUrl });
   res.json(p);
 });
-admin.patch("/product/:id", async (req, res) => res.json(await Product.findByIdAndUpdate(req.params.id, { $set: req.body }, { new: true })));
+const PRODUCT_FIELDS = ["nameAr", "nameEn", "descAr", "descEn", "category", "price", "hours", "days", "colors", "imageUrl", "active"];
+admin.patch("/product/:id", async (req, res) => {
+  const owner = await shopOwner();
+  const p = await Product.findOne({ _id: req.params.id, owner: owner._id });
+  if (!p) return res.status(404).json({ error: "not_found" });
+  const b = req.body || {};
+  for (const k of PRODUCT_FIELDS) if (b[k] !== undefined) p[k] = b[k];
+  if (b.image) {
+    const url = await saveImage(b.image, { family: owner.family, owner: owner._id, purpose: "product" });
+    if (!url) return res.status(400).json({ error: "bad_image" });
+    await deleteImage(p.imageUrl); p.imageUrl = url;
+  }
+  await p.save(); res.json(p);
+});
+
+// ---------- مشاريع الكروشيه: عدّاد الصفوف + مؤقّت الشغل ----------
+const runMinutes = (p) => p.minutes + (p.timerStartedAt ? Math.floor((Date.now() - new Date(p.timerStartedAt).getTime()) / 60000) : 0);
+admin.get("/projects", async (req, res) => {
+  const owner = await shopOwner();
+  const list = await Project.find({ owner: owner._id }).populate("order", "customerName due status").sort({ status: 1, updatedAt: -1 }).limit(50).lean();
+  res.json(list.map((p) => ({ ...p, liveMinutes: runMinutes(p) })));
+});
+admin.post("/projects", async (req, res) => {
+  const owner = await shopOwner();
+  const b = req.body || {};
+  const title = String(b.title || "").trim().slice(0, 80);
+  if (!title) return res.status(400).json({ error: "bad_input" });
+  const order = b.order ? await Order.findOne({ _id: b.order, owner: owner._id }).select("_id").lean() : null;
+  res.json(await Project.create({ owner: owner._id, title, order: order?._id, rowsTarget: Math.max(0, Math.round(+b.rowsTarget || 0)), notes: String(b.notes || "").slice(0, 500) }));
+});
+admin.post("/projects/:id/:action", async (req, res) => {
+  const owner = await shopOwner();
+  const p = await Project.findOne({ _id: req.params.id, owner: owner._id });
+  if (!p) return res.status(404).json({ error: "not_found" });
+  const a = req.params.action;
+  if (a === "row") p.rows = Math.max(0, p.rows + (Number(req.body?.by) === -1 ? -1 : 1));
+  else if (a === "rows") p.rows = Math.max(0, Math.round(+req.body?.rows || 0));
+  else if (a === "start") { if (!p.timerStartedAt) p.timerStartedAt = new Date(); }
+  else if (a === "stop") { p.minutes = runMinutes(p); p.timerStartedAt = undefined; }
+  else if (a === "done") { p.minutes = runMinutes(p); p.timerStartedAt = undefined; p.status = "done"; }
+  else if (a === "reopen") p.status = "active";
+  else if (a === "update") { if (req.body?.notes !== undefined) p.notes = String(req.body.notes).slice(0, 500); if (req.body?.rowsTarget !== undefined) p.rowsTarget = Math.max(0, Math.round(+req.body.rowsTarget || 0)); }
+  else if (a === "delete") { await Project.deleteOne({ _id: p._id }); return res.json({ ok: true }); }
+  else return res.status(400).json({ error: "bad_input" });
+  await p.save();
+  res.json({ ...p.toObject(), liveMinutes: runMinutes(p) });
+});
 admin.post("/yarn", async (req, res) => { const owner = await shopOwner(); res.json(await Yarn.create({ owner: owner._id, ...req.body })); });
 admin.patch("/yarn/:id", async (req, res) => res.json(await Yarn.findByIdAndUpdate(req.params.id, { $set: req.body }, { new: true })));
 admin.patch("/order/:id", async (req, res) => {
