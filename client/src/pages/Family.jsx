@@ -28,6 +28,7 @@ export default function Family() {
           </div>
           {p.imageUrl && <img src={p.imageUrl} alt="" className="rounded-xl mb-2 w-full" />}
           <div className="reading text-[17px]" dir="auto">{p.text}</div>
+          {isParent && p.note && <div className="text-xs bg-[#F6E8D2] text-[#8A5612] rounded-lg px-2 py-1.5 mt-2"><b>{t("feed.note")}:</b> {p.note}</div>}
           {p.status === "pending" && isParent ? <button className="btn btn-sm mt-2" onClick={async () => { await post(`/family/${p._id}/approve`); load(); }}>{t("feed.approve")}</button> : (
             <div className="flex flex-wrap gap-1 mt-3">{Object.entries(d.touches).map(([k, l]) => { const n = p.touches.filter((x) => x.kind === k).length; return <button key={k} className="pill" onClick={() => touch(p._id, k)}>{l}{n ? ` · ${n}` : ""}</button>; })}</div>
           )}

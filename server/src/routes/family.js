@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAuth, isParent, isChild } from "../middleware/auth.js";
 import { Post, User, Notification } from "../models/index.js";
 import { award } from "../utils/points.js";
+import { askJSON, S } from "../utils/ai.js";
 
 const r = Router();
 r.use(requireAuth);
@@ -11,20 +12,35 @@ const SENSITIVE = ["مدرسة", "school", "عنوان", "address", "شارع", 
 r.get("/", async (req, res) => {
   const posts = await Post.find({ family: req.user.family, $or: [{ status: "published" }, { author: req.user._id }, ...(isParent(req.user.role) ? [{ status: "pending" }] : [])] })
     .populate("author", "displayName color").populate("touches.user", "displayName").sort({ createdAt: -1 }).limit(60).lean();
+  if (!isParent(req.user.role)) for (const p of posts) delete p.note;
   res.json({ posts, touches: TOUCHES });
 });
 r.post("/", async (req, res) => {
   const { text, imageUrl, kind } = req.body || {};
   if (!text && !imageUrl) return res.status(400).json({ error: "empty" });
-  const safe = !SENSITIVE.some((w) => (text || "").toLowerCase().includes(w));
-  // الصغير (Stage 4) ينشر بموافقة؛ الكلمات الحساسة تذهب للموافقة دائماً
-  const needsApproval = (isChild(req.user.role) && (req.user.grade || "").startsWith("Stage 4")) || !safe;
-  const post = await Post.create({ family: req.user.family, author: req.user._id, text, imageUrl, kind: kind || "post", status: needsApproval ? "pending" : "published" });
+  let note = SENSITIVE.some((w) => (text || "").toLowerCase().includes(w)) ? "فيه كلمة حساسة (مدرسة/عنوان/هاتف)." : "";
+  // منشورات الولاد: فحص مبدئي بالذكاء الاصطناعي (معلومات شخصية، تنمّر، كلام مؤذٍ أو حزين يحتاج انتباه)
+  if (!note && text && isChild(req.user.role)) {
+    const m = await askJSON({
+      tag: "moderate",
+      system: "You check posts written by children in a private family app before they are shown to the rest of the family. Parents always have the final say.",
+      content: `Post by a ${req.user.sex === "f" ? "girl" : req.user.sex === "m" ? "boy" : "child"}:
+<post>${String(text).slice(0, 2000)}</post>
+
+flag = true only if the post shares personal location/contact details (address, school name, phone), contains bullying, insults or inappropriate words, or shows sadness, fear or a worry that a parent should gently notice. Normal happy, silly or everyday posts are not flagged. reason: if flagged, one short Arabic sentence for the parent explaining why (kind, no drama); otherwise empty.`,
+      schema: S.obj({ flag: S.bool(), reason: S.str() }), maxTokens: 800,
+    });
+    if (m?.flag) note = m.reason || "يحتاج نظرة من الأهل.";
+  }
+  // الصغير (Stage 4) ينشر بموافقة؛ وأي منشور فيه ملاحظة يروح للموافقة
+  const needsApproval = (isChild(req.user.role) && (req.user.grade || "").startsWith("Stage 4")) || !!note;
+  const post = await Post.create({ family: req.user.family, author: req.user._id, text, imageUrl, kind: kind || "post", status: needsApproval ? "pending" : "published", note: note || undefined });
   if (needsApproval) {
     const parents = await User.find({ family: req.user.family, role: { $in: ["owner", "admin"] } }).select("_id").lean();
-    await Notification.insertMany(parents.map((p) => ({ user: p._id, kind: "approve", body: `${req.user.displayName} نشر في عيلتنا وينتظر الموافقة.` })));
+    await Notification.insertMany(parents.map((p) => ({ user: p._id, kind: "approve", body: `${req.user.displayName} نشر في عيلتنا وينتظر الموافقة.${note ? ` ملاحظة: ${note}` : ""}` })));
   }
-  res.json(post);
+  const out = post.toObject(); if (!isParent(req.user.role)) delete out.note;
+  res.json(out);
 });
 r.post("/:id/approve", async (req, res) => {
   if (!isParent(req.user.role)) return res.status(403).json({ error: "parents_only" });

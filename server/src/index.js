@@ -15,11 +15,13 @@ import settingsRoutes from "./routes/settings.js";
 import { startScheduler } from "./scheduler.js";
 import { Family } from "./models/index.js";
 import { seed } from "./seed.js";
+import { requireAuth, isParent } from "./middleware/auth.js";
+import { aiUsage } from "./utils/ai.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.set("trust proxy", 1);
-app.use(express.json({ limit: "2mb" }));
+app.use(express.json({ limit: "10mb" })); // صور الكتب والمنتجات (مصغّرة من المتصفح)
 app.use(cors({ origin: process.env.CLIENT_ORIGIN ? process.env.CLIENT_ORIGIN.split(",") : true }));
 
 app.get("/healthz", (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
@@ -32,6 +34,7 @@ app.use("/api/shop", shopAdmin);
 app.use("/api/family", familyRoutes);
 app.use("/api/study", studyRoutes);
 app.use("/api/settings", settingsRoutes);
+app.get("/api/ai/status", requireAuth, (req, res) => res.json(isParent(req.user.role) ? aiUsage() : { ready: aiUsage().ready }));
 app.post("/api/scale", (req, res, next) => { req.url = "/scale"; healthRoutes(req, res, next); }); // اختصار لربط الميزان
 
 // في الإنتاج: نخدم واجهة React المبنية من نفس الخدمة

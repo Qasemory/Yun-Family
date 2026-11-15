@@ -4,6 +4,7 @@ import { requireAuth, isParent } from "../middleware/auth.js";
 import { Product, Order, Customer, Yarn, User, Notification } from "../models/index.js";
 import { getSettings, setSetting, brandFrom } from "../utils/settings.js";
 import { today, addDays } from "../utils/dates.js";
+import { askJSON, aiReady, imageBlock, S } from "../utils/ai.js";
 
 const pub = Router();      // بدون تسجيل دخول
 const admin = Router();    // رنا وقاسم
@@ -12,6 +13,8 @@ async function shopOwner() {
   return (await User.findOne({ role: "admin", isActive: true }).lean()) || (await User.findOne({ role: "owner" }).lean());
 }
 const slugify = (s) => String(s).toLowerCase().trim().replace(/[^a-z0-9؀-ۿ]+/g, "-").replace(/^-|-$/g, "") || `p-${Date.now()}`;
+
+const SHOP_VOICE = (brand) => `You write for "${brand.name}" (${brand.nameEn}), a small handmade crochet shop in Jordan run by a mother from home. Voice: warm, simple, honest, never pushy. Never invent facts (sizes, materials, discounts, delivery fees) that were not given.`;
 
 /** أقرب تسليم حقيقي: ساعات الطلبات المفتوحة ÷ الساعات المحمية أسبوعياً */
 async function earliestDelivery(ownerId, hours, days, protectedHours) {
@@ -70,7 +73,7 @@ admin.get("/", async (req, res) => {
   const month = today().slice(0, 7);
   const delivered = orders.filter((o) => o.status === "delivered" && o.updatedAt.toISOString().startsWith(month));
   const openHours = orders.filter((o) => ["accepted", "in_progress"].includes(o.status)).reduce((a, o) => a + (o.product?.hours || 0), 0);
-  res.json({ brand: brandFrom(s), products, yarn, orders, finance: { monthRevenue: delivered.reduce((a, o) => a + (o.price || 0), 0), monthOrders: delivered.length, openHours, protectedHours: Number(s.protected_hours_week || 8) } });
+  res.json({ ai: aiReady(), brand: brandFrom(s), products, yarn, orders, finance: { monthRevenue: delivered.reduce((a, o) => a + (o.price || 0), 0), monthOrders: delivered.length, openHours, protectedHours: Number(s.protected_hours_week || 8) } });
 });
 admin.post("/product", async (req, res) => {
   const owner = await shopOwner();
@@ -97,17 +100,83 @@ admin.get("/gift/:orderId", async (req, res) => {
   const third = !!o.options?.name && o.options.name.trim() !== (o.customerName || "").trim();
   res.json({
     lang, brand, recipient, thirdParty: third,
-    line: lang === "ar" ? (third ? `${brand.name} هذي لكة، بطلب من قلب يحبّك.` : `${brand.name} هذي لكة.`) : (third ? `This ${brand.nameEn} is for you, ordered by someone who loves you.` : `This ${brand.nameEn} is for you.`),
+    line: lang === "ar" ? (third ? `${brand.name} هذي لكِ، بطلب من قلب يحبّك.` : `${brand.name} هذي لكِ.`) : (third ? `This ${brand.nameEn} is for you, ordered by someone who loves you.` : `This ${brand.nameEn} is for you.`),
     front: lang === "ar" ? brand.craft : brand.craftEn, product: lang === "ar" ? o.product.nameAr : (o.product.nameEn || o.product.nameAr),
     care: lang === "ar" ? "غسيل يدوي · ماء بارد · تجفيف مسطّح" : "Hand wash · cold water · dry flat",
   });
 });
-// وصف إنستغرام لمنتج
+// وصف إنستغرام لمنتج (Claude إن توفّر، وإلا قالب ثابت)
 admin.get("/caption/:id", async (req, res) => {
   const p = await Product.findById(req.params.id).lean();
+  if (!p) return res.status(404).json({ error: "not_found" });
   const owner = await shopOwner();
   const brand = brandFrom(await getSettings(owner.family));
-  res.json({ ar: `${p.nameAr} صناعة يدوية حسب الطلب خلال ${p.days} أيام. ${brand.hashtags}`, en: `Handmade ${p.nameEn || p.nameAr}, made to order in ${p.days} days. ${brand.hashtagsEn}` });
+  const ai = await askJSON({
+    tag: "caption", system: SHOP_VOICE(brand),
+    content: `Write an Instagram caption for this product.
+Arabic name: ${p.nameAr}
+English name: ${p.nameEn || "-"}
+Description: ${p.descAr || p.descEn || "-"}
+Price: ${p.price} JOD · made to order in ${p.days} days.
+ar: 2-4 short lines in warm Jordanian Arabic with 1-2 fitting emoji, ending with how to order (DM or WhatsApp). en: the same in English. Do not add hashtags; they are added separately.`,
+    schema: S.obj({ ar: S.str(), en: S.str() }), maxTokens: 2000,
+  });
+  if (ai) return res.json({ ar: `${ai.ar}
+
+${brand.hashtags}`, en: `${ai.en}
+
+${brand.hashtagsEn}`, ai: true });
+  res.json({ ar: `${p.nameAr} صناعة يدوية حسب الطلب خلال ${p.days} أيام. ${brand.hashtags}`, en: `Handmade ${p.nameEn || p.nameAr}, made to order in ${p.days} days. ${brand.hashtagsEn}`, ai: false });
+});
+// كتابة اسم ووصف المنتج من ملاحظات و/أو صورة القطعة
+admin.post("/ai/describe", async (req, res) => {
+  if (!aiReady()) return res.status(503).json({ error: "ai_off" });
+  const { nameAr, nameEn, notes, image } = req.body || {};
+  const img = image ? imageBlock(image) : null;
+  if (image && !img) return res.status(400).json({ error: "bad_image" });
+  if (!img && !nameAr && !nameEn && !notes) return res.status(400).json({ error: "empty" });
+  const owner = await shopOwner();
+  const brand = brandFrom(await getSettings(owner.family));
+  const content = [];
+  if (img) content.push(img);
+  content.push({ type: "text", text: `${img ? "This is a photo of a handmade crochet piece. " : ""}Help list it in the shop.
+Arabic name (may be empty): ${nameAr || "-"}
+English name (may be empty): ${nameEn || "-"}
+Maker's notes: ${notes || "-"}
+
+Return: nameAr and nameEn (short product names; keep the given ones if provided), descAr and descEn (2-3 warm sentences each: what it is, the feel/material, who it suits as a gift; do not invent sizes or prices), category (one of babies, dolls, bags, gifts), hours (realistic crochet hours for one piece, integer 1-40).` });
+  const out = await askJSON({
+    tag: "describe", system: SHOP_VOICE(brand), content, maxTokens: 3000,
+    schema: S.obj({ nameAr: S.str(), nameEn: S.str(), descAr: S.str(), descEn: S.str(), category: S.enum(["babies", "dolls", "bags", "gifts"]), hours: S.int() }),
+  });
+  if (!out) return res.status(502).json({ error: "ai_unavailable" });
+  res.json({ ...out, hours: Math.min(40, Math.max(1, out.hours || 4)) });
+});
+// رد واتساب جاهز لزبونة (بلغة الطلب) — ترحيب، تأكيد، جاهز، أو رد على رسالتها
+admin.post("/ai/reply/:orderId", async (req, res) => {
+  if (!aiReady()) return res.status(503).json({ error: "ai_off" });
+  const o = await Order.findById(req.params.orderId).populate("product").populate("customer").lean();
+  if (!o) return res.status(404).json({ error: "not_found" });
+  const owner = await shopOwner();
+  const brand = brandFrom(await getSettings(owner.family));
+  const msg = String(req.body?.message || "").slice(0, 1000);
+  const out = await askJSON({
+    tag: "reply", system: SHOP_VOICE(brand),
+    content: `Write a short WhatsApp message from the shop to a customer.
+Language: ${o.lang === "en" ? "English" : "Jordanian Arabic"}
+Customer first name: ${o.customerName}
+Product: ${o.product?.nameAr} / ${o.product?.nameEn || ""}
+Options: ${JSON.stringify(o.options || {})}
+Price: ${o.price} JOD · expected ready date: ${o.due}
+Order status: ${o.status}
+${msg ? `The customer wrote: "${msg}"
+Reply to it helpfully. If she asks for something you cannot know (discounts, delivery fees, changing the date), say the maker will confirm shortly.` : "Write the message that fits the status (new: thank her and confirm details; accepted/in_progress: update on progress; ready: tell her it is ready and ask about pickup or delivery; delivered: thank her and kindly ask for a photo or review)."}
+2-4 short lines, warm, 1 emoji at most.`,
+    schema: S.obj({ text: S.str() }), maxTokens: 1500,
+  });
+  if (!out) return res.status(502).json({ error: "ai_unavailable" });
+  const phone = (o.customer?.phone || "").replace(/\D/g, "").replace(/^0/, "962");
+  res.json({ text: out.text, phone });
 });
 // إعدادات الهوية
 admin.post("/brand", async (req, res) => {

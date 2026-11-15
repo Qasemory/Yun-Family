@@ -1,10 +1,38 @@
 // إدارة المتجر (رنا): الطلبات، الكتالوج، الخيوط، المالية، الهوية
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { fam } from "../lib/paths.js";
 import { get, post, patch } from "../lib/api.js";
 import { useT } from "../lib/i18n.js";
 import { Card, Spinner, Stat, Msg, PageTitle } from "../components/ui.jsx";
+import { shrinkImage } from "../lib/image.js";
+
+// رد واتساب جاهز لطلب (Claude)
+function WaReply({ order }) {
+  const { t } = useT();
+  const [open, setOpen] = useState(false);
+  const [m, setM] = useState("");
+  const [out, setOut] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [copied, setCopied] = useState(false);
+  const gen = async () => { setBusy(true); setErr(""); try { setOut(await post(`/shop/ai/reply/${order._id}`, { message: m })); } catch { setErr(t("ai.failed")); } setBusy(false); };
+  if (!open) return <button className="btn-ghost btn-sm mt-2" onClick={() => setOpen(true)}>{t("shop.waReply")}</button>;
+  return (
+    <div className="mt-2 flex flex-col gap-2 bg-ivory rounded-xl p-2">
+      <textarea className="h-16 py-1.5 text-sm" dir="auto" placeholder={t("shop.customerMsgPh")} value={m} onChange={(e) => setM(e.target.value)} />
+      <button className="btn btn-sm self-start" onClick={gen} disabled={busy}>{busy ? "…" : t("shop.generate")}</button>
+      {err && <Msg kind="err">{err}</Msg>}
+      {out && <>
+        <textarea className="h-28 py-1.5 text-sm" dir="auto" value={out.text} onChange={(e) => setOut({ ...out, text: e.target.value })} />
+        <div className="flex flex-wrap gap-2">
+          <button className="btn-ghost btn-sm" onClick={async () => { await navigator.clipboard?.writeText(out.text); setCopied(true); }}>{copied ? t("shop.copied") : t("shop.copy")}</button>
+          {out.phone && <a className="btn btn-sm" href={`https://wa.me/${out.phone}?text=${encodeURIComponent(out.text)}`} target="_blank" rel="noreferrer">{t("shop.openWa")}</a>}
+        </div>
+      </>}
+    </div>
+  );
+}
 
 const COLS = ["new", "accepted", "in_progress", "ready", "delivered"];
 const NEXT = { new: "accepted", accepted: "in_progress", in_progress: "ready", ready: "delivered" };
@@ -15,7 +43,12 @@ export default function Shop() {
   const [d, setD] = useState(null);
   const [tab, setTab] = useState("orders");
   const [msg, setMsg] = useState(null);
-  const [np, setNp] = useState({ nameAr: "", nameEn: "", price: "", hours: 4, days: 5, category: "gifts" });
+  const EMPTY_P = { nameAr: "", nameEn: "", descAr: "", descEn: "", price: "", hours: 4, days: 5, category: "gifts" };
+  const [np, setNp] = useState(EMPTY_P);
+  const [notes, setNotes] = useState("");
+  const [photo, setPhoto] = useState(null);
+  const [aiBusy, setAiBusy] = useState(false);
+  const photoRef = useRef(null);
   const [ny, setNy] = useState({ color: "", hex: "#D9B28F", grams: 100 });
   const [brand, setBrand] = useState({});
   const load = () => get("/shop").then((r) => { setD(r); setBrand({ shop_name: r.brand.name, shop_name_en: r.brand.nameEn, shop_instagram: r.brand.instagram, shop_whatsapp: r.brand.whatsapp, protected_hours_week: r.finance.protectedHours }); });
@@ -23,7 +56,17 @@ export default function Shop() {
   if (!d) return <Spinner />;
   const pname = (p) => (lang === "en" ? p?.nameEn || p?.nameAr : p?.nameAr) || "";
   const move = async (o, status) => { await patch(`/shop/order/${o._id}`, { status }); load(); };
-  const addP = async (e) => { e.preventDefault(); await post("/shop/product", np); setNp({ nameAr: "", nameEn: "", price: "", hours: 4, days: 5, category: "gifts" }); load(); };
+  const addP = async (e) => { e.preventDefault(); await post("/shop/product", np); setNp(EMPTY_P); setNotes(""); setPhoto(null); load(); };
+  const pickPhoto = async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) { try { setPhoto(await shrinkImage(f, 1280, 0.82)); } catch { /* ignore */ } } };
+  const describe = async () => {
+    setAiBusy(true); setMsg(null);
+    try {
+      const r = await post("/shop/ai/describe", { nameAr: np.nameAr, nameEn: np.nameEn, notes, image: photo || undefined });
+      setNp((p) => ({ ...p, nameAr: r.nameAr || p.nameAr, nameEn: r.nameEn || p.nameEn, descAr: r.descAr, descEn: r.descEn, category: r.category || p.category, hours: r.hours || p.hours }));
+      setMsg({ kind: "ok", text: t("shop.aiFilled") });
+    } catch { setMsg({ kind: "err", text: t("ai.failed") }); }
+    setAiBusy(false);
+  };
   const addY = async (e) => { e.preventDefault(); await post("/shop/yarn", ny); setNy({ color: "", hex: "#D9B28F", grams: 100 }); load(); };
   const saveBrand = async (e) => { e.preventDefault(); await post("/shop/brand", brand); setMsg({ kind: "ok", text: t("shop.brandSaved") }); load(); };
   const caption = async (p) => { const c = await get(`/shop/caption/${p._id}`); await navigator.clipboard?.writeText(c.ar + "\n\n" + c.en); setMsg({ kind: "ok", text: t("shop.captionCopied") }); };
@@ -48,6 +91,7 @@ export default function Shop() {
                       <div className="min-w-0"><div className="font-semibold text-sm">{pname(o.product)} · {o.customerName}</div><div className="text-xs text-muted">{o.options?.color ? `${t("shop.color")}: ${o.options.color} · ` : ""}{o.options?.name ? `${t("shop.engrave")}: ${o.options.name} · ` : ""}{t("shop.due")} <span dir="ltr">{o.due}</span> · {o.price} {t("shop.jodShort")}</div></div>
                       <div className="flex gap-1 shrink-0">{NEXT[k] && <button className="btn btn-sm" onClick={() => move(o, NEXT[k])}>{t("shop.moveTo", { s: t(`shop.status.${NEXT[k]}`) })}</button>}{k === "new" && <button className="btn-ghost btn-sm" aria-label={t("shop.decline")} title={t("shop.decline")} onClick={() => move(o, "declined")}>✗</button>}</div>
                     </div>
+                    {d.ai && <WaReply order={o} />}
                     {k === "ready" && <Link to={fam(`/gift/${o._id}`)} target="_blank" className="btn-ghost btn-sm mt-2 inline-flex">{t("shop.giftCard")}</Link>}
                   </div>
                 ))}
@@ -67,8 +111,22 @@ export default function Shop() {
           ))}
           <Card title={t("shop.newProduct")} className="md:col-span-2 xl:col-span-3">
             <form onSubmit={addP} className="grid gap-2 sm:grid-cols-2">
+              {d.ai ? (
+                <div className="sm:col-span-2 flex flex-col gap-2 bg-ivory rounded-xl p-2">
+                  <textarea className="h-16 py-1.5 text-sm" placeholder={t("shop.notesPh")} value={notes} onChange={(e) => setNotes(e.target.value)} />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input ref={photoRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={pickPhoto} />
+                    <button type="button" className="btn-ghost btn-sm" onClick={() => photoRef.current?.click()}>{photo ? t("shop.photoAttached") : t("shop.aiPhoto")}</button>
+                    {photo && <img src={photo} alt="" className="w-10 h-10 rounded-lg object-cover" />}
+                    <button type="button" className="btn btn-sm" onClick={describe} disabled={aiBusy || (!photo && !notes && !np.nameAr && !np.nameEn)}>{aiBusy ? "…" : t("shop.aiWrite")}</button>
+                  </div>
+                  {aiBusy && <div className="text-xs text-muted">{t("ai.working")}</div>}
+                </div>
+              ) : <div className="sm:col-span-2 text-xs text-muted">{t("ai.off")}</div>}
               <input placeholder="الاسم بالعربي" dir="rtl" lang="ar" value={np.nameAr} onChange={(e) => setNp({ ...np, nameAr: e.target.value })} required />
               <input placeholder="Name in English" dir="ltr" lang="en" value={np.nameEn} onChange={(e) => setNp({ ...np, nameEn: e.target.value })} />
+              <textarea className="h-24 py-2" placeholder="الوصف بالعربي" dir="rtl" lang="ar" value={np.descAr} onChange={(e) => setNp({ ...np, descAr: e.target.value })} />
+              <textarea className="h-24 py-2" placeholder="Description in English" dir="ltr" lang="en" value={np.descEn} onChange={(e) => setNp({ ...np, descEn: e.target.value })} />
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:col-span-2">
                 <input type="number" inputMode="decimal" placeholder={t("shop.price")} aria-label={t("shop.price")} value={np.price} onChange={(e) => setNp({ ...np, price: e.target.value })} required />
                 <input type="number" inputMode="numeric" placeholder={t("shop.hours")} aria-label={t("shop.hours")} value={np.hours} onChange={(e) => setNp({ ...np, hours: e.target.value })} />

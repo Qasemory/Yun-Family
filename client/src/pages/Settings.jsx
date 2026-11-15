@@ -141,6 +141,19 @@ function RecentActivity({ recent }) {
   );
 }
 
+function AiStatus() {
+  const { t } = useT();
+  const [a, setA] = useState(null);
+  useEffect(() => { get("/ai/status").then(setA).catch(() => {}); }, []);
+  if (!a) return null;
+  return (
+    <Card title={t("ai.status")} right={<span className={`pill ${a.ready ? "pill-green" : ""}`}>{a.ready ? t("ai.on") : t("ai.offShort")}</span>}>
+      {a.ready ? <div className="text-sm">{t("ai.today", { n: a.calls || 0, max: a.limit })} · <span dir="ltr" className="text-xs text-muted">{a.model}</span></div> : <div className="text-sm text-muted">{t("ai.off")}</div>}
+      <div className="text-xs text-muted mt-1">{t("ai.hint")}</div>
+    </Card>
+  );
+}
+
 export default function Settings() {
   const { user, members, isParent, refresh } = useAuth();
   const { t, locale } = useT();
@@ -182,6 +195,7 @@ export default function Settings() {
             <KidPin kids={kids} />
             {user.role === "owner" && <ResetAdmin admins={admins} />}
             {sec && <RecentActivity recent={sec.recent} />}
+            <AiStatus />
           </div>
 
           <h2 className="section text-base text-ink mt-4">{t("settings.family")}</h2>

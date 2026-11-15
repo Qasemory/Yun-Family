@@ -24,6 +24,10 @@ services:
         sync: false
       - key: GMAIL_APP_PASSWORD
         sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: AI_DAILY_LIMIT
+        value: "300"
   - type: web
     name: yun-family
     runtime: static

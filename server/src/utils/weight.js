@@ -4,6 +4,7 @@ import { HealthLog, HealthGoal, ScaleLink, User, Completion, Task, Notification 
 import { today, weekStart, addDays, ageOn } from "./dates.js";
 import { award } from "./points.js";
 import { isParent, isChild } from "../middleware/auth.js";
+import { askJSON, aiReady, S } from "./ai.js";
 
 export const CHECKIN_POINTS = 10;
 // WHO 2007 BMI-for-age (تقريبي بالسنوات): [-2SD, median, +1SD, +2SD]
@@ -77,8 +78,36 @@ async function habitsLastWeek(userId) {
   return { sport, sleepAvg: sleep.length ? +(sleep.reduce((a, c) => a + c.value, 0) / sleep.length).toFixed(1) : null, waterDays: water };
 }
 
+// رسالة الأحد: Claude يعيد صياغتها بشكل شخصي ولطيف، بحدود صارمة (بدون أرقام وزن ولا حمية ولا كلام عن الجسم).
+// كاش أسبوعي بالذاكرة حتى ما نطلب كل مرة تنفتح صفحة الصحة.
+const msgCache = new Map();
 export async function weeklyMessage(subject, lang = "ar") {
-  const t = await trend(subject), h = await habitsLastWeek(subject._id), name = subject.displayName;
+  const t = await trend(subject), h = await habitsLastWeek(subject._id);
+  const base = ruleMessage(subject, lang, t, h);
+  if (!aiReady()) return base;
+  const key = `${subject._id}|${lang}|${weekKey()}|${t.status}`;
+  if (msgCache.has(key)) return msgCache.get(key);
+  const child = isChild(subject.role);
+  const out = await askJSON({
+    tag: "weekly",
+    system: `You write one short, warm weekly message inside a family app for ${child ? "a child" : "an adult"} named ${subject.displayName}. Strict rules: never mention weight, kilograms, BMI, body shape, food, calories, dieting or appearance. Only talk about habits (sport, sleep, water) and effort. Never give medical advice. Never shame. ${child ? "Simple words for a child." : ""}`,
+    content: `Language: ${lang === "en" ? "English" : "Arabic (friendly Jordanian tone)"}
+Trend this week (do not state it as numbers): ${t.status}
+Habits last 7 days: sport sessions ${h.sport}, average sleep ${h.sleepAvg ?? "unknown"} hours, days with enough water ${h.waterDays}.
+Reference message (keep its meaning): ${base}
+
+Write 2-3 short sentences: one honest encouragement and one small, concrete goal for next week.`,
+    schema: S.obj({ text: S.str() }), maxTokens: 1000,
+  });
+  const text = out?.text || base;
+  if (msgCache.size > 500) msgCache.clear();
+  msgCache.set(key, text);
+  return text;
+}
+function weekKey() { const d = new Date(); d.setUTCDate(d.getUTCDate() - d.getUTCDay()); return d.toISOString().slice(0, 10); }
+
+function ruleMessage(subject, lang, t, h) {
+  const name = subject.displayName;
   const good = [], fix = [];
   const ar = lang === "ar";
   if (h.sport >= 3) good.push(ar ? `الرياضة ${h.sport} مرات` : `sport ${h.sport}x`); else if (h.sport <= 1) fix.push(ar ? "نزيد يوم رياضة" : "add one sport day");

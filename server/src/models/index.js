@@ -170,6 +170,7 @@ const postSchema = new Schema({
   imageUrl: String,
   kind: { type: String, default: "post" },  // post | story | achievement
   status: { type: String, enum: ["published", "pending"], default: "published" },
+  note: String, // سبب الإيقاف للمراجعة (للأهل فقط)
   touches: [{ user: { type: Schema.Types.ObjectId, ref: "User" }, kind: String, text: String }],
 }, { timestamps: true });
 
@@ -190,13 +191,20 @@ const lessonSchema = new Schema({
   title: String,
   forDay: String,
   objective: String,
-  points: [{ text: String, question: String, answer: String, hint: String }],
-  exam: [{ command: String, question: String, keywords: [String], marks: Number }],
+  points: [{ text: String, explain: String, example: String, ar: String, question: String, answer: String, hint: String }],
+  exam: [{ command: String, question: String, modelAnswer: String, keywords: [String], marks: Number }],
   stage: { type: String, enum: ["warmup", "learn", "exam", "summary", "done"], default: "warmup" },
   currentPoint: { type: Number, default: 0 },
   score: Number,
   mastered: { type: Boolean, default: false },
   summary: String,
+  parentNote: String,          // تقرير قصير للأهل (AI)
+  examDetail: { type: Array, default: [] },
+  attempts: { type: Number, default: 0 },   // محاولات النقطة الحالية
+  mistakes: { type: [Number], default: [] }, // أرقام النقاط اللي غلط فيها (للمراجعة)
+  reviewed: { type: Boolean, default: false },
+  isReview: { type: Boolean, default: false },
+  aiPrepared: { type: Boolean, default: false },
 }, { timestamps: true });
 
 export const Family = model("Family", familySchema);

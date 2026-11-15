@@ -80,6 +80,11 @@ const ar = {
   "err.bad_current": "كلمة السر الحالية غير صحيحة", "err.weak": "كلمة السر لازم تكون ٨ أحرف على الأقل", "err.bad_email": "الإيميل مش صحيح", "err.email_taken": "هالإيميل مستخدم بحساب تاني",
   "err.too_many": "محاولات كتير. استنى شوي وجرّب مرة تانية", "err.bad_token": "الرابط غير صالح أو انتهى", "err.nothing_to_verify": "ما في إيميل بحاجة تأكيد",
   "err.owner_only": "هالخيار للأب بس", "err.parents_only": "هالخيار للأهل بس", "err.not_found": "الحساب مش موجود", "err.bad_input": "تأكد من المعلومات",
+  "ai.off": "الذكاء الاصطناعي غير مفعّل بعد، فالميزة شغّالة بالطريقة البسيطة.", "ai.working": "Claude عم يشتغل… ممكن ياخد لحد دقيقة", "ai.failed": "ما زبط طلب الذكاء الاصطناعي. جرّب كمان مرة.", "ai.status": "الذكاء الاصطناعي (Claude)", "ai.on": "شغّال", "ai.offShort": "غير مفعّل", "ai.today": "طلبات اليوم: {n} من {max}", "ai.hint": "المفتاح ANTHROPIC_API_KEY ينحط بإعدادات Render فقط.",
+  "study.photo": "📷 صوّر الصفحة", "study.reading": "عم نقرأ الصفحة…", "study.readDone": "قرأنا الصفحة. راجع النص وصحّح إذا لزم، وبعدين حضّر الدرس.", "study.preparing": "عم نحضّر الدرس…", "study.prepared": "الدرس جاهز لبكرا.", "study.review": "مراجعة ذكية · {n}", "study.reviewHint": "درس قصير من النقاط اللي غلط فيها مؤخراً.", "study.parentNote": "ملاحظة للأهل", "study.reviewTag": "مراجعة",
+  "shop.aiWrite": "✨ اكتب الاسم والوصف", "shop.aiPhoto": "📷 صورة القطعة", "shop.notesPh": "ملاحظات (اختياري): الخيط، اللون، لمين مناسبة…", "shop.photoAttached": "الصورة جاهزة ✓", "shop.waReply": "رد واتساب", "shop.customerMsgPh": "رسالة الزبونة (اختياري). اتركه فاضي لرسالة حسب حالة الطلب.", "shop.generate": "اكتب الرد", "shop.copy": "نسخ", "shop.openWa": "افتح واتساب", "shop.copied": "انتسخ ✓", "shop.aiFilled": "عبّينا الحقول، راجعها قبل الإضافة.",
+  "tasks.suggest": "اقتراح مهام", "tasks.wishPh": "شو بدك تركّز عليه؟ (اختياري) مثلاً: قراءة، ترتيب الغرفة", "tasks.suggestBtn": "✨ اقترح", "tasks.added": "انضافت ✓", "tasks.min": "{n} د",
+  "feed.note": "سبب المراجعة",
 };
 
 const en = {
@@ -159,6 +164,11 @@ const en = {
   "err.bad_current": "Current password is wrong", "err.weak": "The password must be at least 8 characters", "err.bad_email": "That email isn't valid", "err.email_taken": "That email is used by another account",
   "err.too_many": "Too many attempts. Wait a little and try again", "err.bad_token": "This link is invalid or expired", "err.nothing_to_verify": "No email needs confirming",
   "err.owner_only": "Only Dad can do this", "err.parents_only": "Only parents can do this", "err.not_found": "Account not found", "err.bad_input": "Check the details",
+  "ai.off": "AI is not enabled yet, so this runs in basic mode.", "ai.working": "Claude is working… this can take up to a minute", "ai.failed": "The AI request failed. Please try again.", "ai.status": "AI (Claude)", "ai.on": "On", "ai.offShort": "Off", "ai.today": "Requests today: {n} of {max}", "ai.hint": "The ANTHROPIC_API_KEY goes in Render settings only.",
+  "study.photo": "📷 Photo of the page", "study.reading": "Reading the page…", "study.readDone": "Page read. Check the text, fix anything, then prepare the lesson.", "study.preparing": "Preparing the lesson…", "study.prepared": "The lesson is ready for tomorrow.", "study.review": "Smart review · {n}", "study.reviewHint": "A short lesson from points missed recently.", "study.parentNote": "Note for parents", "study.reviewTag": "Review",
+  "shop.aiWrite": "✨ Write name & description", "shop.aiPhoto": "📷 Photo of the piece", "shop.notesPh": "Notes (optional): yarn, colour, who it suits…", "shop.photoAttached": "Photo attached ✓", "shop.waReply": "WhatsApp reply", "shop.customerMsgPh": "Customer's message (optional). Leave empty for a status message.", "shop.generate": "Write reply", "shop.copy": "Copy", "shop.openWa": "Open WhatsApp", "shop.copied": "Copied ✓", "shop.aiFilled": "Fields filled in. Check them before adding.",
+  "tasks.suggest": "Suggest tasks", "tasks.wishPh": "What to focus on? (optional) e.g. reading, tidying the room", "tasks.suggestBtn": "✨ Suggest", "tasks.added": "Added ✓", "tasks.min": "{n} min",
+  "feed.note": "Why it needs review",
 };
 
 const S = { ar, en };
