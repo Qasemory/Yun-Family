@@ -4,6 +4,7 @@ import { Post, User, Notification } from "../models/index.js";
 import { award } from "../utils/points.js";
 import { askJSON, S } from "../utils/ai.js";
 import { saveImage } from "../utils/images.js";
+import { notifyParents } from "../utils/notify.js";
 
 const r = Router();
 r.use(requireAuth);
@@ -40,8 +41,7 @@ flag = true only if the post shares personal location/contact details (address, 
   const needsApproval = (isChild(req.user.role) && (req.user.grade || "").startsWith("Stage 4")) || !!note;
   const post = await Post.create({ family: req.user.family, author: req.user._id, text, imageUrl, kind: kind || "post", status: needsApproval ? "pending" : "published", note: note || undefined });
   if (needsApproval) {
-    const parents = await User.find({ family: req.user.family, role: { $in: ["owner", "admin"] } }).select("_id").lean();
-    await Notification.insertMany(parents.map((p) => ({ user: p._id, kind: "approve", body: `${req.user.displayName} نشر في عيلتنا وينتظر الموافقة.${note ? ` ملاحظة: ${note}` : ""}` })));
+    await notifyParents(req.user.family, "approve", `${req.user.displayName} نشر في عيلتنا وينتظر الموافقة.${note ? ` ملاحظة: ${note}` : ""}`);
   }
   const out = post.toObject(); if (!isParent(req.user.role)) delete out.note;
   res.json(out);

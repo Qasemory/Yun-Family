@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
+import { PushCard } from "../components/PushCard.jsx";
 import { get, post, setToken } from "../lib/api.js";
 import { useAuth } from "../lib/auth.jsx";
 import { useT } from "../lib/i18n.js";
@@ -267,6 +268,7 @@ export default function Settings() {
       {msg && <Msg kind={msg.kind}>{msg.text}</Msg>}
 
       <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+        <PushCard />
         <Card title={t("settings.language")}>
           <div className="flex flex-wrap gap-2">{langs.map((k) => <button key={k} onClick={() => setLang(k)} className={`pill ${user.uiLanguage === k || (k === "ar" && !langs.includes(user.uiLanguage)) ? "bg-olive text-white border-transparent" : ""}`}>{t(`settings.lang.${k}`)}</button>)}</div>
           <div className="text-xs text-muted mt-2">{t(isParent ? "settings.langNoteParent" : "settings.langNoteChild")}</div>

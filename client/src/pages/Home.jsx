@@ -7,6 +7,7 @@ import { fam } from "../lib/paths.js";
 import { Card, Stat, Spinner } from "../components/ui.jsx";
 import TaskList from "../components/TaskList.jsx";
 import { DayTrain } from "../components/Journey.jsx";
+import { PushPrompt } from "../components/PushCard.jsx";
 
 function ParentHome() {
   const { members, user } = useAuth();
@@ -26,6 +27,7 @@ function ParentHome() {
   return (
     <div className="flex flex-col gap-4 lg:gap-6">
       <div><h1 className="text-2xl lg:text-3xl font-semibold">{t(user.role === "owner" ? "home.greetOwner" : "home.greetAdmin", { name: user.displayName })}</h1><div className="text-sm text-muted">{t("home.familyToday")}</div></div>
+      <PushPrompt />
       {pending.length > 0 && (
         <Card title={t("home.waitingYou")}>
           <div className="grid md:grid-cols-2 md:gap-x-6">
@@ -75,6 +77,7 @@ function ChildHome() {
   return (
     <div className="flex flex-col gap-4 lg:gap-6">
       <div><h1 className="text-2xl lg:text-3xl font-semibold">{t("home.hi", { name: user.displayName })}</h1><div className="text-sm text-muted">{t("home.todayBalance", { today: p.today, balance: p.balance })}</div></div>
+      <PushPrompt />
       <Link to={fam("/tasks")} className="block hover:opacity-95" aria-label={t("journey.openJourney")}><DayTrain plan={p.plan} fun={p.fun} /></Link>
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:items-start">
         <Card className="lg:sticky lg:top-8">

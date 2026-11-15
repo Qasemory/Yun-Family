@@ -3,6 +3,7 @@ import { Router } from "express";
 import { requireAuth, isParent } from "../middleware/auth.js";
 import { Product, Order, Customer, Yarn, User, Notification, Project } from "../models/index.js";
 import { saveImage, deleteImage } from "../utils/images.js";
+import { notify } from "../utils/notify.js";
 import { getSettings, setSetting, brandFrom } from "../utils/settings.js";
 import { today, addDays } from "../utils/dates.js";
 import { askJSON, aiReady, imageBlock, S } from "../utils/ai.js";
@@ -59,7 +60,7 @@ pub.post("/order", async (req, res) => {
   const order = await Order.create({ owner: owner._id, product: p._id, customer: customer._id, customerName: firstName, options: options || {}, price: p.price, due, lang: lang === "en" ? "en" : "ar" });
   const deposit = Math.max(5, Math.round(p.price * 0.35));
   const reply = `أهلاً ${firstName}، ${p.nameAr} بـ ${p.price} د، أقرب تسليم ${due}. عربون ${deposit} د عبر CliQ لنبدأ.\n${brand.signature}`;
-  await Notification.create({ user: owner._id, kind: "order", body: `طلب جديد: ${p.nameAr} من ${firstName}` });
+  await notify(owner, "order", `🧶 طلب جديد: ${p.nameAr} من ${firstName}`);
   res.json({ ok: true, orderId: order._id, due, price: p.price, suggestedReply: reply, whatsapp: brand.whatsapp });
 });
 

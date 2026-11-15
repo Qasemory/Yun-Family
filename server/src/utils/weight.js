@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { HealthLog, HealthGoal, ScaleLink, User, Completion, Task, Notification } from "../models/index.js";
 import { today, weekStart, addDays, ageOn } from "./dates.js";
 import { award } from "./points.js";
+import { notify } from "./notify.js";
 import { isParent, isChild } from "../middleware/auth.js";
 import { askJSON, aiReady, S } from "./ai.js";
 
@@ -136,7 +137,7 @@ export async function parentAlerts(subject) {
     const parents = await User.find({ family: subject.family, role: { $in: ["owner", "admin"] } }).select("_id").lean();
     const since = new Date(Date.now() - 6 * 864e5);
     for (const p of parents) for (const a of alerts) {
-      if (!(await Notification.exists({ user: p._id, body: a, createdAt: { $gte: since } }))) await Notification.create({ user: p._id, kind: "care", body: a });
+      if (!(await Notification.exists({ user: p._id, body: a, createdAt: { $gte: since } }))) await notify(p, "care", a);
     }
   }
   return alerts;

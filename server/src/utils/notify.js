@@ -1,5 +1,6 @@
-// إشعار داخل التطبيق + تيليجرام (إن رُبط الحساب ووُجد TELEGRAM_BOT_TOKEN)
+// إشعار داخل التطبيق + إشعار الموبايل + تيليجرام (إن رُبط الحساب ووُجد TELEGRAM_BOT_TOKEN)
 import { Notification, User } from "../models/index.js";
+import { pushTo } from "./push.js";
 
 export const telegramReady = () => !!process.env.TELEGRAM_BOT_TOKEN;
 
@@ -16,7 +17,10 @@ export async function notify(userOrId, kind, body) {
   const user = userOrId?._id ? userOrId : await User.findById(userOrId).select("telegramChatId").lean();
   if (!user) return;
   await Notification.create({ user: user._id, kind, body });
-  if (user.telegramChatId) await telegramSend(user.telegramChatId, body);
+  await Promise.all([
+    pushTo(user._id, { body, kind }).catch(() => 0),
+    user.telegramChatId ? telegramSend(user.telegramChatId, body) : null,
+  ]);
 }
 
 export async function notifyParents(familyId, kind, body) {

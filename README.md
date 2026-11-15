@@ -98,6 +98,7 @@ POST https://<your-app>.onrender.com/api/scale
 | `/api/shop/projects` · `/projects/:id/(row\|start\|stop\|done…)` | مشاريع الكروشيه: عدّاد الصفوف والمؤقّت |
 | `POST /api/auth/2fa/(setup\|enable\|disable\|reset-for)` | التحقق بخطوتين للأهل |
 | `/api/telegram/(status\|link\|unlink)` · `/hook/:secret` | بوت تيليجرام |
+| `GET /api/push/key` · `POST /api/push/(subscribe\|unsubscribe\|test)` · `GET /push/status` | إشعارات الموبايل (Web Push) |
 | `GET /api/img/:key` | الصور المخزّنة (منتجات، إثبات المهام، منشورات) |
 
 ## ٧) ما نُقل من النسخة السابقة وما يأتي لاحقاً
@@ -110,4 +111,5 @@ POST https://<your-app>.onrender.com/api/scale
 ## ملاحظات
 - جداول النطاق الصحي للأطفال تقريبية (WHO 2007)؛ الطبيب هو المرجع. تاريخ الميلاد والجنس يُصحَّحان من صفحة الصحة.
 - مواقيت الصلاة في `scheduler.js` ثابتة تقريبية لعمّان؛ اربطها بمصدر مواقيت عند الحاجة.
-- الإشعارات داخل التطبيق دائماً، وعبر تيليجرام إن وُضع `TELEGRAM_BOT_TOKEN` وربط `telegramChatId` للمستخدم.
+- الإشعارات داخل التطبيق دائماً، وعلى الموبايل (Web Push) لكل جهاز فعّلها من الإعدادات، وعبر تيليجرام إن وُضع `TELEGRAM_BOT_TOKEN` وربط الحساب.
+- إشعارات الموبايل ما بتحتاج أي إعداد: مفاتيح VAPID بتنعمل أول مرة وبتنحفظ بقاعدة البيانات (أو حطها بـ `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`). على الآيفون لازم «إضافة إلى الشاشة الرئيسية» أولاً (iOS 16.4+).

@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/auth.jsx";
 import { useT, useDocumentLang } from "../lib/i18n.js";
 import { fam } from "../lib/paths.js";
+import { addFamilyManifest } from "../lib/push.js";
 
 const Icon = ({ d, size = 22 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>;
 const ICONS = {
@@ -33,6 +34,7 @@ export default function Layout() {
   const bar = items.slice(0, MOBILE), rest = items.slice(MOBILE);
   const loc = useLocation();
   const [more, setMore] = useState(false);
+  useEffect(() => { addFamilyManifest(); }, []);
   useEffect(() => { setMore(false); }, [loc.pathname]);
   const restActive = rest.some(([to]) => loc.pathname.startsWith(to));
   const today = new Date().toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" });

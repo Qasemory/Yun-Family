@@ -298,6 +298,18 @@ const friendMsgSchema = new Schema({
   concern: { type: String, default: "none" },   // none | low | high
 }, { timestamps: true });
 
+// ---- إشعارات الموبايل (Web Push) ----
+const pushSubSchema = new Schema({
+  user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+  endpoint: { type: String, required: true, unique: true },
+  keys: { p256dh: String, auth: String },
+  device: String,
+  lastOk: Date,
+}, { timestamps: true });
+
+// مفاتيح عامة للتطبيق (مثل مفاتيح VAPID) حتى تضل ثابتة بعد كل إعادة تشغيل
+const appKeySchema = new Schema({ key: { type: String, unique: true }, value: String });
+
 export const Family = model("Family", familySchema);
 export const User = model("User", userSchema);
 export const Task = model("Task", taskSchema);
@@ -327,4 +339,6 @@ export const WorkItem = model("WorkItem", workItemSchema);
 export const Money = model("Money", moneySchema);
 export const Decision = model("Decision", decisionSchema);
 export const FriendMsg = model("FriendMsg", friendMsgSchema);
+export const PushSub = model("PushSub", pushSubSchema);
+export const AppKey = model("AppKey", appKeySchema);
 export { ROLES };

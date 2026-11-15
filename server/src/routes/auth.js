@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import { User, Audit, Notification } from "../models/index.js";
 import { signToken, requireAuth, visibleMembers, isParent, isChild } from "../middleware/auth.js";
 import { notifyParents } from "../utils/points.js";
+import { notify } from "../utils/notify.js";
 import { sendMail, appUrl, mailConfigured } from "../utils/mailer.js";
 import { newSecret, verifyTotp, otpauthUrl } from "../utils/totp.js";
 
@@ -149,7 +150,7 @@ r.post("/reset-password-for", requireAuth, async (req, res) => {
   if (!target) return res.status(404).json({ error: "not_found" });
   if (!next || String(next).length < MIN_PASSWORD) return res.status(400).json({ error: "weak" });
   await setPassword(target, next); await target.save();
-  await Notification.create({ user: target._id, kind: "security", body: `${req.user.displayName} أعاد ضبط كلمة سرك.` });
+  await notify(target, "security", `${req.user.displayName} أعاد ضبط كلمة سرك.`);
   await Audit.create({ family: req.user.family, actor: req.user._id, action: "password_reset_by_owner", severity: "alert", detail: target.displayName });
   await mailPasswordChanged(target, req.user.displayName);
   res.json({ ok: true });
@@ -164,7 +165,7 @@ r.post("/reset-pin", requireAuth, async (req, res) => {
   child.pinHash = await bcrypt.hash(String(pin), 10); child.failedAttempts = 0; child.lockedUntil = undefined;
   child.tokenVersion = (child.tokenVersion || 0) + 1;
   await child.save();
-  await Notification.create({ user: child._id, kind: "security", body: `${req.user.displayName} غيّر رمز دخولك.` });
+  await notify(child, "security", `${req.user.displayName} غيّر رمز دخولك.`);
   await Audit.create({ family: req.user.family, actor: req.user._id, action: "reset_pin", detail: child.displayName });
   res.json({ ok: true });
 });
@@ -270,7 +271,7 @@ r.post("/2fa/reset-for", requireAuth, async (req, res) => {
   const target = await User.findOne({ _id: req.body?.userId, family: req.user.family, role: "admin" });
   if (!target) return res.status(404).json({ error: "not_found" });
   target.totpEnabled = false; target.totpSecret = undefined; target.totpPending = undefined; await target.save();
-  await Notification.create({ user: target._id, kind: "security", body: `${req.user.displayName} أطفى التحقق بخطوتين لحسابك. فعّله من جديد من الإعدادات.` });
+  await notify(target, "security", `${req.user.displayName} أطفى التحقق بخطوتين لحسابك. فعّله من جديد من الإعدادات.`);
   await Audit.create({ family: req.user.family, actor: req.user._id, action: "2fa_reset_by_owner", severity: "alert", detail: target.displayName });
   res.json({ ok: true });
 });

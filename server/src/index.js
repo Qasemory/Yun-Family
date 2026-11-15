@@ -18,6 +18,8 @@ import friendRoutes from "./routes/friend.js";
 import programRoutes from "./routes/programs.js";
 import telegramRoutes, { setupTelegram } from "./routes/telegram.js";
 import { serveImage } from "./utils/images.js";
+import pushRoutes from "./routes/push.js";
+import { initPush } from "./utils/push.js";
 import { startScheduler } from "./scheduler.js";
 import { Family } from "./models/index.js";
 import { seed } from "./seed.js";
@@ -52,6 +54,7 @@ app.use("/api/journey", journeyRoutes);
 app.use("/api/friend", friendRoutes);
 app.use("/api/programs", programRoutes);
 app.use("/api/telegram", telegramRoutes);
+app.use("/api/push", pushRoutes);
 app.get("/api/img/:key", (req, res, next) => serveImage(req, res).catch(next));
 app.get("/api/ai/status", requireAuth, (req, res) => res.json(isParent(req.user.role) ? aiUsage() : { ready: aiUsage().ready }));
 app.post("/api/scale", (req, res, next) => { req.url = "/scale"; healthRoutes(req, res, next); }); // اختصار لربط الميزان
@@ -76,5 +79,6 @@ connectDB().then(async () => {
   if (!(await Family.exists({}))) { console.log("قاعدة فارغة: تهيئة أولية…"); await seed(); }
   startScheduler();
   setupTelegram();
+  initPush();
   app.listen(PORT, () => console.log(`API على المنفذ ${PORT}`));
 }).catch((e) => { console.error("فشل الاتصال بـ MongoDB:", e.message); process.exit(1); });
