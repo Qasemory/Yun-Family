@@ -331,6 +331,10 @@ const ar = {
   "push.promptTitle": "خلّي الإشعارات توصلك على الموبايل",
   "push.promptText": "مهام بانتظارك، صلاة، طلبات… بدون أي رقم أو تطبيق إضافي.",
   "push.later": "بعدين",
+
+  "auth.alreadyIn": "هالجهاز داخل على حساب:",
+  "auth.continueAs": "كمّل كـ {name}",
+  "auth.otherAccount": "ادخل بحساب تاني",
 };
 
 const en = {
@@ -661,6 +665,10 @@ const en = {
   "push.promptTitle": "Get notifications on your phone",
   "push.promptText": "Tasks waiting, prayer, orders… no phone number or extra app.",
   "push.later": "Later",
+
+  "auth.alreadyIn": "This device is signed in as:",
+  "auth.continueAs": "Continue as {name}",
+  "auth.otherAccount": "Sign in with another account",
 };
 
 const S = { ar, en };

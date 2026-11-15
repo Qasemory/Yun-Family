@@ -15,7 +15,8 @@ export function AuthProvider({ children }) {
     const r = await api("/auth/login", { method: "POST", body: { name, secret, code: code || undefined }, auth: false });
     setToken(r.token); await refresh(); return r.user;
   };
-  const logout = async () => { await unlinkOnLogout(); setToken(null); setState({ loading: false, user: null, members: [], unread: 0 }); };
+  // الخروج فوري: نمسح الجلسة أولاً، وفك ربط الإشعارات بيصير بالخلفية
+  const logout = () => { const tok = getToken(); setToken(null); setState({ loading: false, user: null, members: [], unread: 0 }); unlinkOnLogout(tok); };
   const lang = state.user?.uiLanguage || "ar";
   const isParent = ["owner", "admin"].includes(state.user?.role);
   const isChild = ["child", "teen_adult"].includes(state.user?.role);

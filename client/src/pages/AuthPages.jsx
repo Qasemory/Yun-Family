@@ -1,5 +1,5 @@
 // صفحات الدخول العامة للعيلة: الدخول، نسيت كلمة السر، كلمة سر جديدة، تأكيد الإيميل
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../lib/api.js";
 import { useAuth } from "../lib/auth.jsx";
@@ -21,7 +21,7 @@ export function AuthShell({ title, subtitle, children }) {
 }
 
 export function Login() {
-  const { login, user } = useAuth();
+  const { login, user, logout } = useAuth();
   const { t } = useT();
   const nav = useNavigate();
   const [name, setName] = useState("");
@@ -30,17 +30,30 @@ export function Login() {
   const [busy, setBusy] = useState(false);
   const [need2fa, setNeed2fa] = useState(false);
   const [code, setCode] = useState("");
-  useEffect(() => { if (user) nav(fam(), { replace: true }); }, [user, nav]);
+  const justIn = useRef(false);
+  // بعد ما يدخل من هون بنروح للرئيسية. أما لو كان في جلسة قديمة على الجهاز، بنسأله بدل ما نحوّله لحاله
+  useEffect(() => { if (user && justIn.current) nav(fam(), { replace: true }); }, [user, nav]);
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setErr("");
-    try { await login(name, secret, need2fa ? code : undefined); nav(fam(), { replace: true }); }
+    try { justIn.current = true; await login(name, secret, need2fa ? code : undefined); nav(fam(), { replace: true }); }
     catch (ex) {
+      justIn.current = false;
       if (ex.message === "need_2fa") { setNeed2fa(true); setErr(""); }
       else if (ex.message === "bad_2fa") { setErr(t("tfa.badCode")); setCode(""); }
       else setErr(ex.status === 423 ? t("auth.locked") : ex.status === 429 ? t("err.too_many") : ex.status === 400 ? t("auth.wrong") : t("auth.serverDown"));
     }
     finally { setBusy(false); }
   };
+  if (user && !justIn.current) return (
+    <AuthShell>
+      <div className="card flex flex-col gap-3 text-center">
+        <div className="text-sm text-muted">{t("auth.alreadyIn")}</div>
+        <div className="flex items-center justify-center gap-2 text-lg font-semibold"><span className="w-9 h-9 rounded-full text-white flex items-center justify-center" style={{ background: user.color }}>{user.displayName?.[0]}</span>{user.displayName}</div>
+        <button className="btn" onClick={() => nav(fam(), { replace: true })}>{t("auth.continueAs", { name: user.displayName })}</button>
+        <button className="btn-ghost" onClick={logout}>{t("auth.otherAccount")}</button>
+      </div>
+    </AuthShell>
+  );
   return (
     <AuthShell>
       <form onSubmit={submit} className="card flex flex-col gap-2">

@@ -1,5 +1,5 @@
 // إشعارات الموبايل من المتصفح (Web Push): بدون رقم ولا تطبيق إضافي
-import { api } from "./api.js";
+import { api, API_BASE } from "./api.js";
 
 export const pushSupported = () => typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 export const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -61,9 +61,13 @@ export async function syncPush() {
   } catch { /* مش مهم */ }
 }
 
-/** عند الخروج: هالجهاز ما يضل يستقبل إشعارات الحساب اللي طلع */
-export async function unlinkOnLogout() {
-  try { const sub = await currentSubscription(); if (sub) await api("/push/unsubscribe", { method: "POST", body: { endpoint: sub.endpoint } }); } catch { /* مش مهم */ }
+/** عند الخروج: هالجهاز ما يضل يستقبل إشعارات الحساب اللي طلع (بالخلفية، ما بيأخّر الخروج) */
+export function unlinkOnLogout(token) {
+  if (!token) return;
+  currentSubscription().then((sub) => {
+    if (!sub) return;
+    fetch(`${API_BASE}/api/push/unsubscribe`, { method: "POST", keepalive: true, headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ endpoint: sub.endpoint }) }).catch(() => {});
+  }).catch(() => {});
 }
 
 /** يضيف رابط الـ manifest وأيقونة الآيفون لصفحات العيلة فقط (مش للمتجر العام) */
