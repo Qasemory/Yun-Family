@@ -1,4 +1,6 @@
 import { useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { fam } from "../lib/paths.js";
 import { post } from "../lib/api.js";
 import { shrinkImage } from "../lib/image.js";
 import { useT } from "../lib/i18n.js";
@@ -41,7 +43,10 @@ export default function TaskList({ plan, onChange }) {
             <div className="text-xs text-muted">{t(`domain.${task.domainKey}`, null, task.domainKey)}{task.mandatory ? ` · ${t("tasks.mandatory")}` : ""}{task.durationMin ? ` · ${t("common.minutesShort", { n: task.durationMin })}` : ""}</div>
           </div>
           <div className="shrink-0">
-            {task.status === "done" ? <span className="pill pill-green">+{task.points}</span>
+            {task.kind === "lesson" ? (
+              task.status === "done" ? <Link to={fam(`/lesson/${task.lessonId}`)} className={`pill ${task.mastered ? "pill-green" : "pill-gold"}`}>{task.score ?? 0}%</Link>
+                : <Link to={fam(`/lesson/${task.lessonId}`)} className="btn btn-sm">📚 {t("study.openLesson")}</Link>
+            ) : task.status === "done" ? <span className="pill pill-green">+{task.points}</span>
               : task.status === "pending_confirm" ? <span className="pill pill-gold">{t("common.waiting")}</span>
               : <button className="btn btn-sm" disabled={busy === task._id} onClick={() => done(task)}>{busy === task._id ? "…" : <>{task.needsProof ? "📷 " : ""}{t("tasks.markDone")} +{task.points}</>}</button>}
           </div>

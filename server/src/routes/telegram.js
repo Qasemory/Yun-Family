@@ -74,6 +74,7 @@ r.post("/hook/:secret", async (req, res) => {
       const plan = await dayPlan(user._id);
       const t = plan[+done[1] - 1];
       if (!t) return telegramSend(chatId, "ما في مهمة بهالرقم. اكتب /today");
+      if (t.kind === "lesson") return telegramSend(chatId, "هاد درس، افتحه من التطبيق (دراستي) وخلّص الامتحان 📚");
       if (t.needsProof) return telegramSend(chatId, "هاي المهمة بدها صورة إثبات، سجّلها من التطبيق.");
       const out = await complete(user, t._id, { source: "telegram" });
       if (out.ok && out.status === "done" && !out.already) await checkBadges(user);

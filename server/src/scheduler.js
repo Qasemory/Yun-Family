@@ -5,6 +5,7 @@ import { notify } from "./utils/notify.js";
 import { checkinMissing, CHECKIN_POINTS, weeklyMessage } from "./utils/weight.js";
 import { dayPlan, todayPoints } from "./utils/points.js";
 import { PRAYER_AR } from "./utils/worship.js";
+import { eveningCheck, eveningCatchUp, EVENING } from "./utils/studyplan.js";
 
 const TZ = process.env.TZ || "Asia/Amman";
 const PRAYER_TIMES = { fajr: "04:52", dhuhr: "11:25", asr: "14:20", maghrib: "16:50", isha: "18:10" }; // تقريبية لعمّان؛ تُربط بمصدر مواقيت لاحقاً
@@ -42,5 +43,10 @@ export function startScheduler() {
       await notify(k, "summary", `يومك: ${done} من ${plan.length}، نقاط اليوم ${await todayPoints(k._id)}. تصبح على خير.`);
     }
   }, { timezone: TZ });
+  // الخطة الأسبوعية: كل مسا نجهّز درس بكرا أو نطلب تصوير صفحاته
+  const [eh, em] = EVENING.split(":").map(Number);
+  cron.schedule(`${em} ${eh} * * *`, () => eveningCheck().catch((e) => console.error("evening check", e.message)), { timezone: TZ });
+  cron.schedule(`0 ${eh + 2} * * *`, () => eveningCheck().catch(() => {}), { timezone: TZ }); // فرصة تانية: لو صوّروا بعد التذكير
+  setTimeout(eveningCatchUp, 15_000); // لو السيرفر كان نايم وقت الفحص
   console.log("scheduler: running (" + TZ + ")");
 }

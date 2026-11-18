@@ -24,6 +24,7 @@ npm run dev                               # API على 5000 + واجهة على 
 **نسيت كلمة السر؟** الأب والأم يضيفون إيميلهم من الإعدادات ← الأمان والدخول ويؤكدونه، فتصير الاستعادة بالإيميل ممكنة (`/family/forgot`). تحتاج على Render: `GMAIL_USER` و`GMAIL_APP_PASSWORD` (App Password من جيميل بعد تفعيل التحقق بخطوتين)، واختيارياً `APP_URL`. الأب يقدر يعيد ضبط كلمة سر الأم من نفس القسم.
 
 **الذكاء الاصطناعي (Claude):** على Render حط `ANTHROPIC_API_KEY` بخدمة الباك. هيك بتشتغل هالميزات:
+- **الخطة الأسبوعية:** الأهل بيصوّروا خطة المدرسة (لحد ٣ صور) وClaude بيطلّع لكل يوم المادة والكتاب والصفحات، وإذا الخطة بتكتب اسم الوحدة بس بيستعمل فهرس الكتاب. كل يوم ١٩:٠٠ (وفرصة تانية ٢١:٠٠) درس بكرا بيتحضّر من الصفحات المحفوظة، وإذا ناقصة بيوصل الأهل إشعار «صوّر صفحة 42». أول ما آخر صفحة ناقصة تنحفظ الدرس بيتحضّر لحاله. درس اليوم بيطلع محطة بقطار المهام. الكتاب ممكن ينرفع PDF (بيتقرأ بالمتصفح، والصفحات المصوّرة بتنقرأ بالذكاء لمدى بتختاره)، أو تنصوّر وحدة كاملة مرة وحدة. السيرفر المجاني إذا كان نايم الساعة ٧ بيعمل الفحص أول ما يصحى.
 - **الدراسة:** تقرأ صورة صفحة الكتاب وتحوّلها لنص، وتحضّر الدرس (شرح بسيط ومثال وعربي وأسئلة فهم)، وتصحح أجوبة الولد بالمعنى، وفي زر "Explain again"، وبتصحح الاختبار وبتكتب ملاحظة لكل سؤال، وبتكتب تقرير للأهل.
 - **المراجعة الذكية:** بتشتغل بدون AI، وبتعمل درس من النقاط اللي غلط فيها الولد.
 - **المتجر:** تكتب الاسم والوصف من ملاحظات أو صورة القطعة، ووصف إنستغرام، ورد واتساب جاهز لكل طلب.
@@ -90,6 +91,8 @@ POST https://<your-app>.onrender.com/api/scale
 | `GET /api/shop` · `POST /shop/product` · `/yarn` · `PATCH /shop/order/:id` · `GET /shop/gift/:orderId` · `/caption/:id` · `POST /shop/brand` | إدارة المتجر (رنا وقاسم) |
 | `GET/POST /api/family` · `/:id/approve` · `/:id/touch` | عيلتنا |
 | `GET /api/study?u=` · `POST /study/book` · `/book/:id/page` · `/prepare` · `/lesson/:id/(start|point|exam|finish)` | الدراسة |
+| `POST /study/book/:id/pages` (لحد ٤٠) · `GET /study/book/:id/pages` · `POST /study/book/:id/toc` · `DELETE /study/book/:id` | صفحات كتيرة (PDF أو وحدة مصوّرة)، الفهرس، حذف كتاب |
+| `GET /study/plan?u=&week=` · `POST /study/plan/read` · `PUT /study/plan` · `POST /study/plan/item/:id/prepare` | الخطة الأسبوعية: قراءة صور الخطة، حفظها، تحضير بند |
 | `GET/POST /api/settings` · `/audit` | الإعدادات (الأهل) |
 | `GET/POST /api/tasks/manage` · `PATCH/DELETE /manage/:id` · `/completion/:id/reject` · `POST /tasks/points` | إدارة مهام الأولاد، الرفض، المكافأة والخصم (الأهل) |
 | `GET /api/journey?u=` · `/journey/rewards` · `/rewards/:id/redeem` · `/redemptions/:id/(approve\|reject)` · `/family-goal` | القطار، نجوم الأسبوع، الشارات، المكافآت، قطار العيلة |

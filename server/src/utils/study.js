@@ -129,3 +129,53 @@ export async function gradeExam(lesson, answers, stage) {
     parentNote: ai?.parentNote || "",
   };
 }
+
+// ---------- الفهرس: صورة أو نص ← وحدات ودروس مع أرقام صفحاتها ----------
+export async function readToc({ image, text }) {
+  const img = image ? imageBlock(image) : null;
+  if (image && !img) return { error: "bad_image" };
+  if (!img && !text) return { error: "nothing" };
+  const ask = "This is the contents page of a school textbook. List every unit and lesson/topic with the page number where it starts, in order. title = the heading as printed (keep unit numbers like \"Unit 3\" or \"3.2\"). page = the start page as an integer. Skip entries with no page number.";
+  const out = await askJSON({
+    tag: "toc", maxTokens: 6000,
+    system: "You read textbook contents pages accurately.",
+    content: img ? [img, { type: "text", text: ask }] : `${ask}\n\n<contents>\n${String(text).slice(0, 15000)}\n</contents>`,
+    schema: S.obj({ entries: S.arr(S.obj({ title: S.str(), page: S.int() })) }),
+  });
+  if (!out) return { error: "ai_unavailable" };
+  const toc = out.entries.filter((e) => e.title && e.page > 0 && e.page < 2000).map((e) => ({ title: e.title.trim().slice(0, 160), page: e.page }));
+  return { toc };
+}
+
+// ---------- الخطة الأسبوعية: صور الخطة ← بنود لكل يوم ----------
+const DAY_EN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+export async function readWeeklyPlan({ images, days, books }) {
+  const blocks = (images || []).map(imageBlock);
+  if (!blocks.length || blocks.some((b) => !b)) return { error: "bad_image" };
+  const bookList = books.map((b) => `- id=${b._id} | subject: ${b.subject} | title: ${b.title}${b.toc?.length ? `\n  contents: ${b.toc.map((e) => `${e.title} (p.${e.page})`).join("; ").slice(0, 3000)}` : ""}`).join("\n");
+  const dayList = days.map((d) => `${DAY_EN[new Date(d + "T12:00:00Z").getUTCDay()]} = ${d}`).join(", ");
+  const out = await askJSON({
+    tag: "plan", effort: "medium", maxTokens: 8000,
+    system: "You read school weekly plans (often a table in English and/or Arabic) for parents in Jordan. Be accurate; never invent lessons that are not on the plan.",
+    content: [...blocks, { type: "text", text: `These images are one child's school weekly plan.
+The school days this week: ${dayList}.
+The child's textbooks:
+${bookList || "(none added yet)"}
+
+Return one item for each lesson on the plan that uses textbook content (skip breaks, PE, assemblies, and items with no content to study).
+- day: one of the dates above.
+- subject: the subject name as on the plan (short).
+- bookId: the id of the matching textbook from the list, or "" if none matches.
+- from / to: the textbook page range if the plan gives pages (to = from for one page). If the plan gives only a unit or topic and that book has contents, use the contents to work out the start page of that topic and the page before the next topic; otherwise 0.
+- topic: the unit/lesson title or what the plan says, short.` }],
+    schema: S.obj({ items: S.arr(S.obj({ day: S.str(), subject: S.str(), bookId: S.str(), from: S.int(), to: S.int(), topic: S.str() })) }),
+  });
+  if (!out) return { error: "ai_unavailable" };
+  const ids = new Set(books.map((b) => String(b._id)));
+  const items = out.items.filter((i) => days.includes(i.day)).map((i) => {
+    const from = i.from > 0 ? i.from : null;
+    const to = from ? Math.max(from, i.to > 0 ? i.to : from) : null;
+    return { day: i.day, subject: i.subject.slice(0, 60), book: ids.has(i.bookId) ? i.bookId : null, from, to: from && to - from > 15 ? from + 15 : to, topic: i.topic.slice(0, 160) };
+  });
+  return { items };
+}

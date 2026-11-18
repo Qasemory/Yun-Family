@@ -1,4 +1,4 @@
-import { Completion, PointsLedger, Task } from "../models/index.js";
+import { Completion, PointsLedger, Task, Lesson } from "../models/index.js";
 import { today, weekday, isWeekend, addDays } from "./dates.js";
 import { getSettings } from "./settings.js";
 
@@ -7,7 +7,13 @@ export async function dayPlan(userId, day = today()) {
   const tasks = await Task.find({ user: userId, active: true, days: w }).sort({ preferredTime: 1 }).lean();
   const comps = await Completion.find({ user: userId, day }).lean();
   const byTask = Object.fromEntries(comps.map((c) => [String(c.task), c]));
-  return tasks.map((t) => ({ ...t, status: byTask[String(t._id)]?.status || "todo", completionId: byTask[String(t._id)]?._id }));
+  const list = tasks.map((t) => ({ ...t, status: byTask[String(t._id)]?.status || "todo", completionId: byTask[String(t._id)]?._id }));
+  // دروس اليوم (من الخطة الأسبوعية أو المحضّرة) محطات بقطار المهام. بتخلص لما الولد يخلص الامتحان.
+  const lessons = await Lesson.find({ user: userId, forDay: day, isReview: { $ne: true } }).select("title stage score mastered").sort({ createdAt: 1 }).lean();
+  return [...list, ...lessons.map((l) => ({
+    _id: `lesson-${l._id}`, kind: "lesson", lessonId: l._id, title: l.title, domainKey: "study", mandatory: false, points: 20,
+    status: ["summary", "done"].includes(l.stage) ? "done" : "todo", score: l.score, mastered: l.mastered, preferredTime: "",
+  }))];
 }
 
 export async function balance(userId) {

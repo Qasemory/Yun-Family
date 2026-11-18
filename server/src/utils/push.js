@@ -29,7 +29,7 @@ export function initPush() {
 // وين يفتح الإشعار لما تكبس عليه
 const URLS = {
   approve: "/family/feed", reward: "/family/tasks?tab=rewards", task: "/family/tasks", points: "/family/tasks", badge: "/family/tasks",
-  order: "/family/shop", prayer: "/family/prayer", care: "/family/health", security: "/family/settings", summary: "/family/tasks", test: "/family",
+  order: "/family/shop", prayer: "/family/prayer", care: "/family/health", security: "/family/settings", summary: "/family/tasks", test: "/family", study: "/family/study?tab=plan",
 };
 export const urlFor = (kind) => URLS[kind] || "/family";
 

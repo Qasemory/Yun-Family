@@ -185,12 +185,15 @@ const postSchema = new Schema({
 const bookSchema = new Schema({
   user: { type: Schema.Types.ObjectId, ref: "User", required: true },
   subject: String, title: String, stage: String,
+  toc: [{ title: String, page: Number }],   // الفهرس: عنوان الوحدة/الدرس ورقم صفحته
 }, { timestamps: true });
 
 const pageSchema = new Schema({
   book: { type: Schema.Types.ObjectId, ref: "Book", required: true },
   number: Number, text: String, imageUrl: String,
+  source: { type: String, default: "photo" }, // photo | pdf | typed
 }, { timestamps: true });
+pageSchema.index({ book: 1, number: 1 });
 
 const lessonSchema = new Schema({
   user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
@@ -212,7 +215,22 @@ const lessonSchema = new Schema({
   reviewed: { type: Boolean, default: false },
   isReview: { type: Boolean, default: false },
   aiPrepared: { type: Boolean, default: false },
+  pages: { from: Number, to: Number },
 }, { timestamps: true });
+
+// الخطة الأسبوعية من المدرسة: لكل يوم المادة والصفحات أو الموضوع
+const studyPlanSchema = new Schema({
+  user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  weekStart: { type: String, required: true },  // الأحد YYYY-MM-DD
+  items: [{
+    day: String, subject: String,
+    book: { type: Schema.Types.ObjectId, ref: "Book" },
+    from: Number, to: Number, topic: String,
+    lesson: { type: Schema.Types.ObjectId, ref: "Lesson" },
+    askedOn: String,   // آخر يوم انبعت فيه تذكير تصوير (ما نكرر)
+  }],
+}, { timestamps: true });
+studyPlanSchema.index({ user: 1, weekStart: 1 }, { unique: true });
 
 // ---- الرحلة: الشارات والمكافآت وقطار العيلة ----
 const badgeSchema = new Schema({
@@ -330,6 +348,7 @@ export const Post = model("Post", postSchema);
 export const Book = model("Book", bookSchema);
 export const Page = model("Page", pageSchema);
 export const Lesson = model("Lesson", lessonSchema);
+export const StudyPlan = model("StudyPlan", studyPlanSchema);
 export const Badge = model("Badge", badgeSchema);
 export const Reward = model("Reward", rewardSchema);
 export const Redemption = model("Redemption", redemptionSchema);
