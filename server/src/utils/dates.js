@@ -1,5 +1,5 @@
-// كل التواريخ بتوقيت عمّان كنص YYYY-MM-DD
-const TZ = process.env.TZ || "Asia/Amman";
+// كل التواريخ بتوقيت السعودية (الرياض) كنص YYYY-MM-DD
+const TZ = process.env.TZ || "Asia/Riyadh";
 
 export function today(d = new Date()) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);

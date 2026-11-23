@@ -7,7 +7,7 @@ import { dayPlan, todayPoints } from "./utils/points.js";
 import { PRAYER_AR } from "./utils/worship.js";
 import { eveningCheck, eveningCatchUp, EVENING } from "./utils/studyplan.js";
 
-const TZ = process.env.TZ || "Asia/Amman";
+const TZ = process.env.TZ || "Asia/Riyadh";
 const PRAYER_TIMES = { fajr: "04:52", dhuhr: "11:25", asr: "14:20", maghrib: "16:50", isha: "18:10" }; // تقريبية لعمّان؛ تُربط بمصدر مواقيت لاحقاً
 
 export function startScheduler() {

@@ -67,7 +67,7 @@ git push -u origin main
 
 **أو يدوياً:** New → Web Service → المستودع →
 - Runtime: Node · Build Command: `npm run build` · Start Command: `npm start`
-- Environment: `MONGODB_URI`, `JWT_SECRET`, `NODE_ENV=production`, `TZ=Asia/Amman`
+- Environment: `MONGODB_URI`, `JWT_SECRET`, `NODE_ENV=production`, `TZ=Asia/Riyadh`
 - Health Check Path: `/healthz`
 
 الخدمة الواحدة تخدم الـ API والواجهة معاً (`client/dist`)، والجدولة (تذكير الصلاة، فحص الأحد، ملخص المساء) تعمل داخلها بـ node-cron. على الخطة المجانية تنام الخدمة بعد ١٥ دقيقة خمول، فالتذكيرات قد تتأخر حتى أول زيارة؛ خطة Starter تحلّها، أو شغّل مراقباً مجانياً (UptimeRobot) يطرق `/healthz` كل ١٠ دقائق.

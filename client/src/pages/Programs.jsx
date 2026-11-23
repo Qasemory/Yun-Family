@@ -5,7 +5,7 @@ import { get, post, patch, del } from "../lib/api.js";
 import { useT } from "../lib/i18n.js";
 import { Card, Empty, Spinner, PageTitle, Stat, Msg } from "../components/ui.jsx";
 
-const todayStr = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Amman" });
+const todayStr = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Riyadh" });
 const money = (n, locale) => Number(n || 0).toLocaleString(locale, { maximumFractionDigits: 2 });
 
 function Work() {
